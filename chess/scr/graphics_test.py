@@ -44,6 +44,7 @@ def draw_board(frame,
                light_color = "#ffce9e", 
                dark_color = "#d88c44",
                square_length = SQUARE_LENGTH,
+               border_thickness = 2,
                border_color = "black"):
     """ Create a function which adds the board to the specified frame. 
         Returns: canvas_grid[row][col]  """
@@ -55,7 +56,8 @@ def draw_board(frame,
                                         width=square_length, 
                                         height=square_length,
                                         background=light_color,
-                                        highlightbackground=border_color,)
+                                        highlightbackground=border_color,
+                                        highlightthickness= border_thickness)
                 square.grid(row=row, column=col)
                 canvas_grid[row][col] = square
             else:
@@ -63,7 +65,8 @@ def draw_board(frame,
                                         width=square_length, 
                                         height=square_length,
                                         background=dark_color,
-                                        highlightbackground=border_color)
+                                        highlightbackground=border_color,
+                                        highlightthickness= border_thickness)
                 square.grid(row=row, column=col)
                 canvas_grid[row][col] = square
     return canvas_grid
@@ -98,14 +101,36 @@ def clear_squares(positions):
         for photo_id in photo_ids:
             canvas_grid[row][col].delete(photo_id)
 
+
+def find_coords(event):
+    """for finding row index and column index after a click
+    Returns [row_index, col_index]"""
+    clicked_canvas = event.widget # name widget that was clicked on
+    for row_index, row in enumerate(canvas_grid):
+        if clicked_canvas in row:
+            col_index = row.index(clicked_canvas)
+            break #break out of loop if clicked canvas is not in row
+    return [row_index, col_index]
+
 # update textual game info on side
 def update_text_info(game):
     """Update the text information about the game in text_box label"""
     info_text = "Current player is: " + game.player
     info_text = info_text + "\nTurn number is: " + str(game.turn)
     text_box.config(text = info_text)
-    info_text = "" 
-    
+     
+def highlight_border(board_coord):
+    """Highlight canvas specified by board_coord = [row_index, col_index]
+    Uses canvas_grid"""
+    row_index, col_index = board_coord
+    canvas_grid[row_index][col_index].config(highlightbackground='red')
+
+def reset_border(board_coord):
+    """Highlight canvas specified by board_coord = [row_index, col_index]
+    Uses canvas_grid"""
+    row_index, col_index = board_coord
+    canvas_grid[row_index][col_index].config(highlightbackground= "black")
+
 
 
 
@@ -115,21 +140,20 @@ def on_canvas_click(event):
     """This function tells the GUI what to do with clicks
     It includes some logic to handle clicking the board to move pieces
     it uses is_valid_move from the module chess_engine, clear_pieces, and draw_pieces"""
-    clicked_canvas = event.widget # name widget that was clicked on
-    # Find the index of the clicked canvas in the nested list
-    for row_index, row in enumerate(canvas_grid):
-        if clicked_canvas in row:
-            col_index = row.index(clicked_canvas)
-            two_click_history.append([row_index, col_index]) # add board coord to history
-            if len(two_click_history) == 2: # check if two clicks have been registered
-                if game.is_valid_move(two_click_history):   # check if valid chess move
-                    game.move_piece(two_click_history)      # move_pieces accordingly
-                    clear_squares(two_click_history)        # clear the images from canvas_grid
-                    draw_pieces(board=game.board)           # draw new positions on canvas_grid
-                    update_text_info(game)
-                two_click_history.clear() # clear click history 
-            break #break out of loop if clicked canvas is not in row 
 
+    two_click_history.append(find_coords(event)) # add clicked coord to history
+
+    # if first click then highlight_border canvas
+    if len(two_click_history) == 1:
+        highlight_border(two_click_history[0])
+    if len(two_click_history) == 2: # check if two clicks have been registered
+        if game.is_valid_move(two_click_history):   # check if valid chess move
+            game.move_piece(two_click_history)      # move_pieces accordingly
+            clear_squares(two_click_history)        # clear the images from canvas_grid
+            draw_pieces(board=game.board)           # draw new positions on canvas_grid
+            update_text_info(game)
+        reset_border(two_click_history[0])  # reset border even if move isn't valid
+        two_click_history.clear()           # clear click history 
 
 # bind left mouse click to function on_canvas_click
 for canvas_row in canvas_grid:
