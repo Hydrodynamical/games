@@ -42,7 +42,6 @@ class GameState():
         # board history is empty list
         self.history = []
 
-
     def print_board(self):
         '''Prints the board, the current player'''
         board_length = len(self.board)
@@ -64,8 +63,14 @@ class GameState():
         for _ in range(row_string_len):
             divider = divider + "="
         print(divider)
-        pass
     
+    def get_board_string(self):
+        """Get the current board state as a string"""
+        board_string = ""
+        for row in self.board:
+            board_string = board_string + str(row) + "\n"
+        return board_string
+
     def switch_player(self):
         '''Switches player order'''
         if self.player == "w":
@@ -86,41 +91,18 @@ class GameState():
         selected_piece = self.board[row_0][col_0]       # get the string of the selected piece
         self.board[row_0][col_0] = "--"                 # set selected square to be empty
         self.board[row_1][col_1] = selected_piece       # set target square to contain the selected piece
-        self.history.append(self.board)  # append the new state of the board to the history
+        self.history.append(self.board)                 # append new state of the board to the history
 
         # increment turns and switch players
         self.turn += 1                                  
         self.switch_player()
 
-    def is_valid_move(self, move_pair):
-        """"This function checks if a move from move_pair = [position_0, position_1]
-        position_0 = [row_0, col_0] to position_1 = [row_1, col_1] is valid. 
-        Returns True if valid move, and False if not valid move"""
-        row_0, col_0 = move_pair[0]
-        color_selected = self.board[row_0][col_0][0]    # get "w" from "wP" for example
-
-        # check if position_0 has a piece 
-        if self.board[row_0][col_0] == "--":
-            return False
-        
-        # check if position_0 has correct color for turn order
-        if color_selected != self.player:   # this returns False when position_0 is empty
-            return False
-        
-        # if piece is pawn, check allowed moves
-        if self.board[row_0][col_0][1] == "P":
-            allowed_moves = self.pawn_allowed_moves(move_pair[0])
-            if move_pair[1] in allowed_moves:
-                return True
-        
-        # if piece is rook, check allowed moves
-        if self.board[row_0][col_0][1] == "R":
-            allowed_moves = self.rook_allowed_moves(move_pair[0])
-            if move_pair[1] in allowed_moves:
-                return True
-        
+    def opponent_color(self):
+        """Returns opponents color as a string ("b" or "w")"""
+        if self.player == "b":
+            return "w"
         else:
-            return False
+            return "b"
         
     def pawn_allowed_moves(self, selected_pawn, board_dimensions = 8):
         """Given a selected pawn, get available moves on board
@@ -176,56 +158,342 @@ class GameState():
         return allowed_moves
 
     def rook_allowed_moves(self, selected_rook, board_dimensions = 8):
-        """Given a selected rook get available moves on board
+        """Given a selected rook get available moves on board.
         selected_rook = [row, column]
         Returns  [allowed_moves]"""
         allowed_moves = []
         row_index, col_index = selected_rook
 
-        # 0 <= row_index + incr < board_dimensions
-        row_incr_range_neg = range(-row_index, 0, -1) # negative allowed row increments
-        row_incr_range_pos = range(1, board_dimensions - row_index) # don't allow trivial move
+        # check north direction
+        proposed_row = row_index    # default proposed row to the selected rook row
+        proposed_col = col_index    # default proposed col to the selected rook col
+        for _ in range(row_index):  # make sure on game board
+            proposed_row -= 1       # move north one step
 
-        # 0 <= col_index + incr < board_dimensions
-        col_incr_range_neg = range(-col_index, 0, -1) # negative allowed column increments 
-        col_incr_range_pos = range(1, board_dimensions - col_index) # don't allow trivial move
-        
-        # up direction 
-        for row_incr in row_incr_range_neg:
-            # check if piece of any color is on the proposed square
-            if self.board[row_index + row_incr][col_index] == "--":
-                allowed_moves.append([row_index + row_incr, col_index])
+            # check if square is empty : 
+            if self.board[proposed_row][proposed_col] == "--":   
+                allowed_moves.append([proposed_row, proposed_col])
+            
+            # check if opponents piece
+            elif self.board[proposed_row][proposed_col][0] != self.player:
+                allowed_moves.append([proposed_row, proposed_col])
+                break
             else:
                 break
-       
-        # down direction
-        for row_incr in row_incr_range_pos:
-            # check if piece of any color is on the proposed square
-            if self.board[row_index + row_incr][col_index] == "--":
-                allowed_moves.append([row_index + row_incr, col_index])
+
+        # check south direction
+        proposed_row = row_index    # default proposed row to the selected rook row
+        proposed_col = col_index    # default proposed col to the selected rook col
+        for _ in range(board_dimensions - row_index - 1):   # make sure on game board
+            proposed_row += 1                               # move south one step
+
+            # check if square is empty : 
+            if self.board[proposed_row][proposed_col] == "--":   
+                allowed_moves.append([proposed_row, proposed_col])
+            
+            # check if opponents piece
+            elif self.board[proposed_row][proposed_col][0] != self.player:
+                allowed_moves.append([proposed_row, proposed_col])
+                break
             else:
                 break
-        """
-        # left direction
-        for col_incr in col_incr_range_neg:
-            # check if piece of any color is on the proposed square
-            if self.board[row_index][col_index + col_incr] == "--":
-                allowed_moves.append([row_index, col_index + col_incr])
+
+        # check east direction
+        proposed_row = row_index    # default proposed row to the selected rook row
+        proposed_col = col_index    # default proposed col to the selected rook col
+        for _ in range(board_dimensions - col_index - 1):   # make sure on game board
+            proposed_col += 1                               # move east one step
+
+            # check if square is empty : 
+            if self.board[proposed_row][proposed_col] == "--":   
+                allowed_moves.append([proposed_row, proposed_col])
+            
+            # check if opponents piece
+            elif self.board[proposed_row][proposed_col][0] != self.player:
+                allowed_moves.append([proposed_row, proposed_col])
+                break
             else:
                 break
-        
-        # right direction
-        for col_incr in col_incr_range_pos:
-            # check if piece of any color is on the proposed square
-            if self.board[row_index][col_index + col_incr] == "--":
-                allowed_moves.append([row_index, col_index + col_incr])
+
+        # check west direction
+        proposed_row = row_index    # default proposed row to the selected rook row
+        proposed_col = col_index    # default proposed col to the selected rook col
+        for _ in range(col_index):  # make sure on game board
+            proposed_col -= 1       # move west one step
+
+            # check if square is empty : 
+            if self.board[proposed_row][proposed_col] == "--":   
+                allowed_moves.append([proposed_row, proposed_col])
+            
+            # check if opponents piece
+            elif self.board[proposed_row][proposed_col][0] != self.player:
+                allowed_moves.append([proposed_row, proposed_col])
+                break
             else:
                 break
-        """
-        print(allowed_moves)
         return allowed_moves
 
+    def king_allowed_moves(self, selected_king, board_dimensions = 8):
+        """Given a selected king, get available moves on board.
+        selected_pawn = [row, column]
+        Returns  [allowed_moves]
+        TODO make more readable 
+        """
+        allowed_moves = []                      # initialize list of allowed_moves to be returned
+        row_index, col_index = selected_king    # get row index and column index of selected king
 
+        # check adjacent squares
+        if row_index + 1 < board_dimensions: 
+            if self.board[row_index + 1][col_index][0] != self.player: 
+                if not self.is_attacked([row_index + 1, col_index]):
+                    allowed_moves.append([row_index + 1, col_index])        # South = [1, 0]
+        if row_index - 1 >= 0:
+            if self.board[row_index - 1][col_index][0] != self.player: 
+                if not self.is_attacked([row_index - 1, col_index]):               
+                    allowed_moves.append([row_index - 1, col_index])        # North = [-1, 0]
+        if col_index + 1 < board_dimensions:
+            if self.board[row_index][col_index + 1][0] != self.player: 
+                if not self.is_attacked([row_index, col_index + 1]): 
+                    allowed_moves.append([row_index, col_index + 1])        # East = [0, 1]
+        if row_index - 1 >= 0:
+            if self.board[row_index][col_index - 1][0] != self.player: 
+                if not self.is_attacked([row_index, col_index - 1]):               
+                    allowed_moves.append([row_index, col_index - 1])        # West = [0, -1]
+
+        # check diagonals
+        if row_index + 1 < board_dimensions: 
+            if col_index + 1 < board_dimensions:
+                if self.board[row_index + 1][col_index + 1][0] != self.player: 
+                    if not self.is_attacked([row_index + 1, col_index + 1]):
+                        allowed_moves.append([row_index + 1, col_index + 1]) # South-east = [1, 1]
+        if row_index + 1 < board_dimensions: 
+            if col_index - 1 >= 0:
+                if self.board[row_index + 1][col_index - 1][0] != self.player: 
+                    if not self.is_attacked([row_index + 1, col_index - 1]):
+                        allowed_moves.append([row_index + 1, col_index - 1]) # South-west = [1, -1]
+        if row_index - 1 >= 0:               
+            if col_index + 1 < board_dimensions:
+                if self.board[row_index - 1][col_index + 1][0] != self.player: 
+                    if not self.is_attacked([row_index - 1, col_index + 1]):
+                        allowed_moves.append([row_index - 1, col_index + 1]) # North-east = [-1, 1]
+        if row_index - 1 >= 0:              
+            if col_index - 1 >= 0:
+                if self.board[row_index - 1][col_index - 1][0] != self.player: 
+                    if not self.is_attacked([row_index - 1, col_index - 1]):
+                        allowed_moves.append([row_index - 1, col_index - 1]) # North-west = [-1, -1]
+
+        return allowed_moves
+        
+    def bishop_allowed_moves(self, selected_bishop, board_dimensions = 8):
+        """Given a selected bishop, get available moves on board.
+        selected_bishop = [row, column]
+        Returns  [allowed_moves]
+        """
+        allowed_moves = []
+        row, col = selected_bishop
+        new_row = row
+        new_col = col
+
+        # southeast diagonals
+        SE_range = min(board_dimensions - row - 1, 
+                       board_dimensions - col - 1) # check diagonal distance to edge of board
+        new_row = row
+        new_col = col
+        for _ in range(SE_range):   # stay on game board
+            new_row += 1            # move south one step
+            new_col += 1            # move east one step
+
+            # check if square is empty
+            if self.board[new_row][new_col] == "--":   
+                allowed_moves.append([new_row, new_col])
+            
+            # check if opponents piece
+            elif self.board[new_row][new_col][0] != self.player:
+                allowed_moves.append([new_row, new_col])
+                break
+            else:
+                break
+
+        # southwest diagonals
+        SW_range = min(board_dimensions - row - 1, col) # check diagonal distance to edge of board
+        new_row = row
+        new_col = col
+        for _ in range(SW_range):   # stay on game board
+            new_row += 1            # move south one step
+            new_col -= 1            # move west one step
+
+            # check if square is empty : 
+            if self.board[new_row][new_col] == "--":   
+                allowed_moves.append([new_row, new_col])
+            
+            # check if opponents piece
+            elif self.board[new_row][new_col][0] != self.player:
+                allowed_moves.append([new_row, new_col])
+                break
+            else:
+                break
+
+        # northwest diagonals
+        NW_range = min(row, col) # check diagonal distance to edge of board
+        new_row = row
+        new_col = col
+        for _ in range(NW_range):   # stay on game board
+            new_row -= 1            # move north one step
+            new_col -= 1            # move west one step
+
+            # check if square is empty : 
+            if self.board[new_row][new_col] == "--":   
+                allowed_moves.append([new_row, new_col])
+            
+            # check if opponents piece
+            elif self.board[new_row][new_col][0] != self.player:
+                allowed_moves.append([new_row, new_col])
+                break
+            else:
+                break
+
+        # northeast diagonals
+        NE_range = min(row, board_dimensions - col - 1) # check diagonal distance to edge of board
+        new_row = row
+        new_col = col
+        for _ in range(NE_range):   # stay on game board
+            new_row -= 1            # move south one step
+            new_col += 1            # move east one step
+
+            # check if square is empty : 
+            if self.board[new_row][new_col] == "--":   
+                allowed_moves.append([new_row, new_col])
+            
+            # check if opponents piece
+            elif self.board[new_row][new_col][0] != self.player:
+                allowed_moves.append([new_row, new_col])
+                break
+            else:
+                break
+        
+        return allowed_moves
+
+    def queen_allowed_moves(self, selected_queen):
+        """Given a selected queen, get available moves on board.
+        selected_queen = [row, column]
+        Returns  [allowed_moves]
+        """
+        # the allowed moves of a queen are just those of a rook and bishop
+        allowed_moves = self.rook_allowed_moves(selected_queen)
+        allowed_moves.extend(self.bishop_allowed_moves(selected_queen))
+        return allowed_moves
+
+    def knight_allowed_moves(self, selected_knight, board_dimensions = 8):
+        """Given a selected knight, get available moves on board.
+        selected_knight = [row, column]
+        Returns  [allowed_move[0], ...]
+        """
+        allowed_moves = []
+        row, col = selected_knight
+
+        # create relative jump directions
+        # see knight_jumps.py for simple code generation
+        jumps = [[1, 2], [1, -2], [-1, 2], [-1, -2], [2, 1], [2, -1], [-2, 1], [-2, -1]]
+
+        for jump in jumps:
+            # create new jump coordinate
+            new_row = jump[0] + row
+            new_col = jump[1] + col
+
+            # make sure jump is on board
+            if new_row in range(board_dimensions):
+                if new_col in range(board_dimensions):
+                    # allowed squares do not contain your own pieces (or are empty)
+                    if self.board[new_row][new_col][0] != self.player:
+                        allowed_moves.append([new_row, new_col])
+        return allowed_moves
+
+    def is_valid_move(self, move_pair):
+        """"This function checks if a move from move_pair = [position_0, position_1]
+        position_0 = [row_0, col_0] to position_1 = [row_1, col_1] is valid. 
+        Returns True if valid move."""
+        row_0, col_0 = move_pair[0]
+        color_selected = self.board[row_0][col_0][0]    # get "w" from "wP" for example
+
+        # check if position_0 has a piece 
+        if self.board[row_0][col_0] == "--":
+            return False
+        
+        # check if position_0 has correct color for turn order
+        if color_selected != self.player:  
+            return False
+        
+        # if piece is pawn, check allowed moves
+        if self.board[row_0][col_0][1] == "P":
+            allowed_moves = self.pawn_allowed_moves(move_pair[0])
+            if move_pair[1] in allowed_moves:
+                return True
+        
+        # if piece is rook, check allowed moves
+        if self.board[row_0][col_0][1] == "R":
+            allowed_moves = self.rook_allowed_moves(move_pair[0])
+            if move_pair[1] in allowed_moves:
+                return True
+            
+        # if piece is king, check allowed moves
+        if self.board[row_0][col_0][1] == "K":
+            allowed_moves = self.king_allowed_moves(move_pair[0])
+            if move_pair[1] in allowed_moves:
+                return True
+            
+        # if piece is bishop, check allowed moves
+        if self.board[row_0][col_0][1] == "B":
+            allowed_moves = self.bishop_allowed_moves(move_pair[0])
+            if move_pair[1] in allowed_moves:
+                return True
+        
+        # if piece is queen, check allowed moves
+        if self.board[row_0][col_0][1] == "Q":
+            allowed_moves = self.queen_allowed_moves(move_pair[0])
+            if move_pair[1] in allowed_moves:
+                return True
+        
+        # if piece is knight, check allowed moves
+        if self.board[row_0][col_0][1] == "N":
+            allowed_moves = self.knight_allowed_moves(move_pair[0])
+            if move_pair[1] in allowed_moves:
+                return True
+        
+        else:
+            return False
+     
+    def get_valid_moves(self, coord):
+        """Return the valid possible moves of the coordinates as a list of coordinates [[row, col], ...]. If the selected_piece is the empty square"""
+        FUNCTION_DICT = {"P": "pawn_allowed_moves", "B": "bishop_allowed_moves", 
+                         "Q": "queen_allowed_moves", "R": "rook_allowed_moves",
+                         "K": "king_allowed_moves", "N": "knight_allowed_moves"}
+        valid_moves = []
+        row, col = coord
+        piece_color = self.board[row][col][0]
+        piece_name = self.board[row][col][1]
+        if piece_name != "-":
+            if piece_color == self.player:
+                valid_move_func = getattr(GameState, FUNCTION_DICT[piece_name])
+                valid_moves = valid_move_func(self, coord)
+        return valid_moves
+
+
+
+
+    def is_attacked(self, coord):
+        """Check if square at coords = [row, col] is being attacked by opponent.
+        Returns true if square is being attacked. 
+        TODO implement cases where is True"""
+        return False
+    
+    def is_checkmate(self):
+        """Write code using is_attacked and king_valid_move.
+        Return true if current board position is checkmate"""
+        pass
+
+    def is_stalemate(self):
+        """Checks in history to determine if current position is stalemate."""
+        pass
 
 
 

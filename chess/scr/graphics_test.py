@@ -11,14 +11,15 @@ root = tk.Tk()                  # create instance of the Tk class
 root.title(WINDOW_NAME)         # sets title of the window
 board_frm = tk.Frame(root)      # create frame for the chess board
 info_frm = tk.Frame(root)       # create frame for text information
-two_click_history = []          # init history for user clicks
+two_click_history_L = []          # init history for user left clicks
+two_click_history_R = []
 
 # position board and info in frame
 board_frm.grid(row = 0, column=0)
 info_frm.grid(row=0, column=1)
 
 # add textbox into info_frame
-text_box = tk.Label(info_frm, text = "White goes first.")
+text_box = tk.Label(info_frm, text = "White goes first.", font= ("Courier", 12))
 text_box.pack()
 
 # load in images 
@@ -93,7 +94,7 @@ def draw_pieces(board):
 draw_pieces(board=game.board)               # draw pieces on the board
 
 # clearing canvas_grid utility
-def clear_squares(positions):
+def clear_photos(positions):
     """Clear the image at positions= [[row, col], ...] on the canvas_grid"""
     for position in positions:
         row, col = position
@@ -115,9 +116,25 @@ def find_coords(event):
 # update textual game info on side
 def update_text_info(game):
     """Update the text information about the game in text_box label"""
+    row_str_len = len(str(["bR", "bN", "bB", "bQ", "bK", "bB", "bN", "bR"]))
     info_text = "Current player is: " + game.player
-    info_text = info_text + "\nTurn number is: " + str(game.turn)
-    text_box.config(text = info_text)
+    info_text = info_text + "\nTurn number is: " + str(game.turn) +"\n\n\n"
+
+    # add an asthetic divider
+    for _ in range(row_str_len):
+        info_text = info_text + "="
+    info_text = info_text + "\n"
+
+    # display current board string
+    info_text = info_text + game.get_board_string()
+
+    # add an asthetic divider
+    for _ in range(row_str_len):
+        info_text = info_text + "="
+    info_text = info_text + "\n"
+
+    # add the resulting info_text to the text_box
+    text_box.config(text = info_text, font = ("Courier", 12))
      
 def highlight_border(board_coord):
     """Highlight canvas specified by board_coord = [row_index, col_index]
@@ -131,35 +148,68 @@ def reset_border(board_coord):
     row_index, col_index = board_coord
     canvas_grid[row_index][col_index].config(highlightbackground= "black")
 
+def highlight_background(board_coord):
+    """highlight the background on canvas_grid with a specified color"""
+    row_index, col_index = board_coord
+    canvas_grid[row_index][col_index].config(bg = "#8FC500")
 
-
-
-
-# add event handler for clicks
-def on_canvas_click(event):
+def reset_background(board_dimension = 8):
+    """reset the background on canvas_grid to it's original color.
+    light_color = "#ffce9e", 
+    dark_color = "#d88c44"."""
+    for row in range(board_dimension):
+        for col in range(board_dimension):
+            if (row + col) % 2 == 0:
+                canvas_grid[row][col].config(bg = "#ffce9e")
+            else:
+                canvas_grid[row][col].config(bg = "#d88c44")
+        
+# add event handler for left clicks
+def on_left_click(event):
     """This function tells the GUI what to do with clicks
     It includes some logic to handle clicking the board to move pieces
     it uses is_valid_move from the module chess_engine, clear_pieces, and draw_pieces"""
-
-    two_click_history.append(find_coords(event)) # add clicked coord to history
+    
+    two_click_history_L.append(find_coords(event)) 
 
     # if first click then highlight_border canvas
-    if len(two_click_history) == 1:
-        highlight_border(two_click_history[0])
-    if len(two_click_history) == 2: # check if two clicks have been registered
-        if game.is_valid_move(two_click_history):   # check if valid chess move
-            game.move_piece(two_click_history)      # move_pieces accordingly
-            clear_squares(two_click_history)        # clear the images from canvas_grid
-            draw_pieces(board=game.board)           # draw new positions on canvas_grid
-            update_text_info(game)
-        reset_border(two_click_history[0])  # reset border even if move isn't valid
-        two_click_history.clear()           # clear click history 
+    if len(two_click_history_L) == 1:
+        highlight_border(two_click_history_L[0])
 
-# bind left mouse click to function on_canvas_click
+    # check if two clicks have been registered
+    if len(two_click_history_L) == 2:                
+        if game.is_valid_move(two_click_history_L):   # check if valid chess move
+            game.move_piece(two_click_history_L)      # move_pieces accordingly
+            clear_photos(two_click_history_L)        # clear the images from canvas_grid
+            draw_pieces(board=game.board)           # draw new positions on canvas_grid
+            update_text_info(game)                  # update text info about the game
+        reset_border(two_click_history_L[0])  # reset border even if move isn't valid
+        reset_background()
+        two_click_history_L.clear()           # clear click history 
+
+# add event handler for right clicks
+def on_right_click(event):
+    coords = find_coords(event)
+    valid_moves = game.get_valid_moves(coords)
+
+    two_click_history_R.append(coords)
+
+    # if one click is registered, highlight avaiable moves
+    if len(two_click_history_R) == 1:
+        for move in valid_moves:
+            highlight_background(move)
+
+    if len(two_click_history_R) == 2:
+        reset_background()
+        two_click_history_R.clear()
+
+    
+
+# bind mouse clics to functions
 for canvas_row in canvas_grid:
     for square in canvas_row:
-        square.bind("<Button-1>", on_canvas_click)
-
+        square.bind("<Button-1>", on_left_click)
+        square.bind("<Button-3>", on_right_click)
 
 # run main event loop for Tk
 root.mainloop()
