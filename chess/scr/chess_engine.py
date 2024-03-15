@@ -477,8 +477,7 @@ class GameState():
                 valid_moves = valid_move_func(self, coord)
         return valid_moves
 
-
-
+    """After this point are things to be done"""
 
     def is_attacked(self, coord):
         """Check if square at coords = [row, col] is being attacked by opponent.

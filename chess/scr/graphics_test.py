@@ -11,7 +11,7 @@ root = tk.Tk()                  # create instance of the Tk class
 root.title(WINDOW_NAME)         # sets title of the window
 board_frm = tk.Frame(root)      # create frame for the chess board
 info_frm = tk.Frame(root)       # create frame for text information
-two_click_history_L = []          # init history for user left clicks
+two_click_history_L = []        # init history for user left clicks
 two_click_history_R = []
 
 # position board and info in frame
@@ -38,8 +38,6 @@ for piece_name in piece_names:
     photo = ImageTk.PhotoImage(image)
     piece_photos[piece_name] = photo
 
-
-# create a function to draw the underlying board
 def draw_board(frame, 
                board_length = 8, 
                light_color = "#ffce9e", 
@@ -72,10 +70,12 @@ def draw_board(frame,
                 canvas_grid[row][col] = square
     return canvas_grid
 
-"""We need to initialze the board here! The functions after this depend on our canvas_grid"""        
+"""
+We need to draw the board now! The functions after this depend on the canvas_grid.
+"""        
+
 canvas_grid = draw_board(board_frm)         # draw initial board
 
-# add pieces to the board
 def draw_pieces(board):
     """This function draws the pieces on the board on the same frame of a background canvas_grid
     board = GameState().board
@@ -93,7 +93,6 @@ def draw_pieces(board):
 
 draw_pieces(board=game.board)               # draw pieces on the board
 
-# clearing canvas_grid utility
 def clear_photos(positions):
     """Clear the image at positions= [[row, col], ...] on the canvas_grid"""
     for position in positions:
@@ -101,7 +100,6 @@ def clear_photos(positions):
         photo_ids = canvas_grid[row][col].find_all()
         for photo_id in photo_ids:
             canvas_grid[row][col].delete(photo_id)
-
 
 def find_coords(event):
     """for finding row index and column index after a click
@@ -113,7 +111,6 @@ def find_coords(event):
             break #break out of loop if clicked canvas is not in row
     return [row_index, col_index]
 
-# update textual game info on side
 def update_text_info(game):
     """Update the text information about the game in text_box label"""
     row_str_len = len(str(["bR", "bN", "bB", "bQ", "bK", "bB", "bN", "bR"]))
@@ -163,18 +160,17 @@ def reset_background(board_dimension = 8):
                 canvas_grid[row][col].config(bg = "#ffce9e")
             else:
                 canvas_grid[row][col].config(bg = "#d88c44")
-        
-# add event handler for left clicks
+
 def on_left_click(event):
-    """This function tells the GUI what to do with clicks
-    It includes some logic to handle clicking the board to move pieces
-    it uses is_valid_move from the module chess_engine, clear_pieces, and draw_pieces"""
+    """This function tells the GUI what to do with left clicks
+    It includes the logic to handle clicking the board to move pieces"""
     
     two_click_history_L.append(find_coords(event)) 
 
     # if first click then highlight_border canvas
     if len(two_click_history_L) == 1:
         highlight_border(two_click_history_L[0])
+
 
     # check if two clicks have been registered
     if len(two_click_history_L) == 2:                
@@ -184,11 +180,12 @@ def on_left_click(event):
             draw_pieces(board=game.board)           # draw new positions on canvas_grid
             update_text_info(game)                  # update text info about the game
         reset_border(two_click_history_L[0])  # reset border even if move isn't valid
-        reset_background()
+        reset_background()                        # reset the background of all squares
         two_click_history_L.clear()           # clear click history 
 
-# add event handler for right clicks
 def on_right_click(event):
+    """This function tells the GUI what to do with right clicks
+    It includes the logic to handle finding valid moves"""
     coords = find_coords(event)
     valid_moves = game.get_valid_moves(coords)
 
@@ -203,9 +200,7 @@ def on_right_click(event):
         reset_background()
         two_click_history_R.clear()
 
-    
-
-# bind mouse clics to functions
+# bind mouse clicks to functions
 for canvas_row in canvas_grid:
     for square in canvas_row:
         square.bind("<Button-1>", on_left_click)
