@@ -13,6 +13,7 @@ board_frm = tk.Frame(root)      # create frame for the chess board
 info_frm = tk.Frame(root)       # create frame for text information
 two_click_history_L = []        # init history for user left clicks
 two_click_history_R = []
+two_click_history_M = []
 
 # position board and info in frame
 board_frm.grid(row = 0, column=0)
@@ -145,10 +146,10 @@ def reset_border(board_coord):
     row_index, col_index = board_coord
     canvas_grid[row_index][col_index].config(highlightbackground= "black")
 
-def highlight_background(board_coord):
+def highlight_background(board_coord, color = "#8FC500"):
     """highlight the background on canvas_grid with a specified color"""
     row_index, col_index = board_coord
-    canvas_grid[row_index][col_index].config(bg = "#8FC500")
+    canvas_grid[row_index][col_index].config(bg = color)
 
 def reset_background(board_dimension = 8):
     """reset the background on canvas_grid to it's original color.
@@ -174,7 +175,7 @@ def on_left_click(event):
 
     # check if two clicks have been registered
     if len(two_click_history_L) == 2:                
-        if game.is_valid_move(two_click_history_L):   # check if valid chess move
+        if game.is_available_move(two_click_history_L):   # check if valid chess move
             game.move_piece(two_click_history_L)      # move_pieces accordingly
             clear_photos(two_click_history_L)        # clear the images from canvas_grid
             draw_pieces(board=game.board)           # draw new positions on canvas_grid
@@ -187,7 +188,7 @@ def on_right_click(event):
     """This function tells the GUI what to do with right clicks
     It includes the logic to handle finding valid moves"""
     coords = find_coords(event)
-    valid_moves = game.get_valid_moves(coords)
+    valid_moves = game.get_available_moves(coords)
 
     two_click_history_R.append(coords)
 
@@ -200,11 +201,39 @@ def on_right_click(event):
         reset_background()
         two_click_history_R.clear()
 
+def highlight_available_moves(event):
+    """This function tells the GUI what to do with middle clicks
+    It includes the logic to handle finding valid moves"""
+    coord = find_coords(event)
+    row, col = coord
+    two_click_history_M.append(coord)
+    player_color = game.board[row][col][0] # for example "b" or "w"
+
+    # if one click is registered, highlight avaiable moves
+    if len(two_click_history_M) == 1:
+        all_valid_moves = game.get_all_available_moves(player_color)
+        for move in all_valid_moves:
+            highlight_background(move, color = "red")
+
+    if len(two_click_history_M) == 2:
+        reset_background()
+        two_click_history_M.clear()
+
+def on_middle_click(event):
+    coord = find_coords(event)
+    row, col = coord
+    selected_color = "b"
+
+    print(game.is_checked(coord = coord, color = selected_color))
+    
+
+
 # bind mouse clicks to functions
 for canvas_row in canvas_grid:
     for square in canvas_row:
         square.bind("<Button-1>", on_left_click)
         square.bind("<Button-3>", on_right_click)
+        square.bind("<Button-2>", on_middle_click)
 
 # run main event loop for Tk
 root.mainloop()
