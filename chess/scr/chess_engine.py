@@ -129,7 +129,7 @@ class GameState():
         """Given a selected pawn, get available moves on board
         selected_pawn = [row, column]
         Returns  [allowed_moves]
-        TODO: Add en passant, fix double space move with piece in front"""
+        TODO: Add en passant"""
         allowed_moves = [] # initialize list of allowed_moves to be returned
         row_index, col_index = selected_pawn # get row index or column index of selected pawn
         pawn_color = self.board[row_index][col_index][0] # eg "wP"
