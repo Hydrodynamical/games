@@ -133,7 +133,8 @@ def update_text_info(game, checkmate = False):
 
     # if checkmate occurs print message
     if checkmate:
-        info_text = info_text + "\nCheckmate!\n"
+        info_text = info_text + "\nCheckmate!\n\n"
+        info_text = info_text + "Player " + str(game.opponent_color()) + " has won."
 
     # add the resulting info_text to the text_box
     text_box.config(text = info_text, font = ("Courier", 12))
