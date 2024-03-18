@@ -1,16 +1,16 @@
 '''This module contains a class GameState 
     GameState is responsible for 
     storing current state of the game,
-    determining valid move states, 
+    determining available move states, 
     storing game history,
-    checking if move is valid.
+    checking if move is available.
 
 '''
-
-
+from copy import deepcopy
 
 class GameState():
-    """We shall make the convention that "available moves" are coordinates on the board that are accessable, but not always legal. """
+    """We shall make the convention that "available moves" are coordinates on the board that are accessable, but not always legal. The following methods have been added dynamically:
+    {"P": "pawn_legal_moves", "B": "bishop_legal_moves", "Q": "queen_legal_moves", "R": "rook_legal_moves", "K": "king_legal_moves", "N": "knight_legal_moves"} """
     def __init__(self):
         # piece encoding:
         # "b" = black
@@ -40,6 +40,9 @@ class GameState():
 
         # board history is empty list
         self.history = []
+
+        # easy access for board dimension 
+        self.board_dimension = 8
 
     def print_board(self):
         '''Prints the board, the current player'''
@@ -96,6 +99,25 @@ class GameState():
         self.turn += 1                                  
         self.switch_player()
 
+    def undo_move_piece(self, move_pair):
+        """This function moves a piece from move_pair[1] to move_pair[0].
+        This function is the inverse of move_piece.
+        """
+
+        # get rows and columns of moves 
+        row_0, col_0 = move_pair[1]
+        row_1, col_1 = move_pair[0]
+
+        # change board and append to history
+        selected_piece = self.board[row_0][col_0]       # get the string of the selected piece
+        self.board[row_0][col_0] = "--"                 # set selected square to be empty
+        self.board[row_1][col_1] = selected_piece       # set target square to contain the selected piece
+        self.history.pop()                              # pop the last history
+
+        # decrement turn and switch players
+        self.turn -= 1                                  
+        self.switch_player()
+
     def opponent_color(self):
         """Returns opponents color as a string ("b" or "w")"""
         if self.player == "b":
@@ -107,7 +129,7 @@ class GameState():
         """Given a selected pawn, get available moves on board
         selected_pawn = [row, column]
         Returns  [allowed_moves]
-        TODO: ADD EN PASSANT"""
+        TODO: Add en passant, fix double space move with piece in front"""
         allowed_moves = [] # initialize list of allowed_moves to be returned
         row_index, col_index = selected_pawn # get row index or column index of selected pawn
         pawn_color = self.board[row_index][col_index][0] # eg "wP"
@@ -431,8 +453,8 @@ class GameState():
 
     def is_available_move(self, move_pair, respect_turn_order = True):
         """"This function checks if a move from move_pair = [position_0, position_1]
-        position_0 = [row_0, col_0] to position_1 = [row_1, col_1] is valid. 
-        Returns True if valid move."""
+        position_0 = [row_0, col_0] to position_1 = [row_1, col_1] is available. 
+        Returns True if available move."""
         row_0, col_0 = move_pair[0]
         color_selected = self.board[row_0][col_0][0]    # get "w" from "wP" for example
 
@@ -484,7 +506,7 @@ class GameState():
             return False
      
     def get_available_moves(self, coord, **kwargs):
-        """Return the valid possible moves of the coordinates as a list of coordinates [[row, col], ...]. If the selected_piece is the empty square return []."""
+        """Return the available possible moves of the coordinates as a list of coordinates [[row, col], ...]. If the selected_piece is the empty square return []."""
         FUNCTION_DICT = {"P": "pawn_available_moves", "B": "bishop_available_moves", 
                          "Q": "queen_available_moves", "R": "rook_available_moves",
                          "K": "king_available_moves", "N": "knight_available_moves"}
@@ -496,6 +518,19 @@ class GameState():
             valid_moves = valid_move_func(self, coord, **kwargs)
         return valid_moves
     
+    def get_available_moves(self, coord, **kwargs):
+        """Return the available possible moves of the coordinates as a list of coordinates [[row, col], ...]. If the selected_piece is the empty square return []."""
+        FUNCTION_DICT = {"P": "pawn_available_moves", "B": "bishop_available_moves", 
+                         "Q": "queen_available_moves", "R": "rook_available_moves",
+                         "K": "king_available_moves", "N": "knight_available_moves"}
+        valid_moves = []
+        row, col = coord
+        piece_name = self.board[row][col][1]
+        if piece_name != "-":
+            valid_move_func = getattr(GameState, FUNCTION_DICT[piece_name])
+            valid_moves = valid_move_func(self, coord, **kwargs)
+        return valid_moves
+        
     def get_all_available_moves(self, player_color):
         """return all available moves of player_color = "b" or "w" """
         all_valid_moves = []
@@ -514,22 +549,85 @@ class GameState():
         else:
             return False
             
-    """IN CONSTRUCTION"""
+    def get_king_coord(self, color):
+        """Returns coord = [row, col] of king of given color"""
+        king_name = str(color) + "K"
+        for row in range(self.board_dimension):
+            for col in range(self.board_dimension):
+                if self.board[row][col] == king_name:
+                    return [row, col]
+                
+    def get_legal_moves(self, coord):
+        """Get all legal moves coord = [row, col]. These legal moves are available moves of the piecethat do not put the king in check. 
+        Returns List([row,col]). 
+        This function requires deepcopy, and not copy in order to access new move states.
+        """ 
+        FUNCTION_DICT = {"P": "pawn_available_moves", "B": "bishop_available_moves", 
+                         "Q": "queen_available_moves", "R": "rook_available_moves",
+                         "K": "king_available_moves", "N": "knight_available_moves"}
+        legal_moves = []
+        row, col = coord
+        piece_name = self.board[row][col][1]
+        king_coord = self.get_king_coord(color = self.player)
+
+        # Check non-empty and squares that are not the king
+        if piece_name != "-" and piece_name != "K":   # if has a piece get available moves
+            piece_available_move_func = getattr(GameState, FUNCTION_DICT[piece_name])
+            available_moves = piece_available_move_func(self, coord) 
+            legal_moves = piece_available_move_func(self, coord) 
+            for move in available_moves:
+                copy_player = deepcopy(self)
+                copy_player.move_piece([coord, move])        # put yourself in opponent perspective
+                opponent_moves = copy_player.get_all_available_moves(self.opponent_color())
+                if king_coord in opponent_moves:
+                    legal_moves.remove(move)          # pop out illegal moves
+                copy_player.undo_move_piece([coord, move])  
+        # Check king logic
+        elif piece_name == "K":
+            piece_available_move_func = getattr(GameState, FUNCTION_DICT[piece_name])
+            available_moves = piece_available_move_func(self, coord) 
+            legal_moves = piece_available_move_func(self, coord) 
+            for move in available_moves:
+                copy_player = deepcopy(self)
+                copy_player.move_piece([coord, move])        # become opponent 
+                opponent_moves = copy_player.get_all_available_moves(self.opponent_color())
+                if (move in opponent_moves):
+                    legal_moves.remove(move)                # pop out move into check
+                if (coord in opponent_moves) and (coord in legal_moves):
+                    legal_moves.remove(coord)                # pop out stay in check
+                copy_player.undo_move_piece([coord, move])   # undo move
+                
+        return legal_moves
+
+    def is_legal_move(self, move_pair):
+        """Returns true if move pair is valid move. move_pair[0] = initial"""
+        legal_moves = self.get_legal_moves(move_pair[0])
+        if move_pair[1] in legal_moves:
+            return True
+        else:
+            return False
     
+    def get_all_legal_moves(self, player_color):
+        """returns all legal move coordinates of player_color"""
+        all_legal_moves = []
+        for row, row_list_string in enumerate(self.board):
+            for col, _ in enumerate(row_list_string):
+                if self.board[row][col][0] == player_color:
+                    all_legal_moves = all_legal_moves + \
+                    self.get_legal_moves([row, col])
+        return all_legal_moves
+
     def is_checkmate(self):
-        """Write code using is_attacked and king_valid_move.
-        Return true if current board position is checkmate"""
-        pass
+        """Return true if current board position is checkmate"""
+        total_legal_moves = len(self.get_all_legal_moves(self.player))
+        king_coord = self.get_king_coord(self.player)
+        is_check = self.is_checked(king_coord, self.opponent_color())
+        if total_legal_moves == 0 and is_check:
+            return True
+        else:
+            return False
 
     def is_stalemate(self):
         """Checks in history to determine if current position is stalemate."""
         pass
 
-
-
-
-
-        
-
-
-    
