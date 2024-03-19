@@ -294,7 +294,7 @@ class GameState():
         if col_index + 1 < board_dimensions:
             if self.board[row_index][col_index + 1][0] != king_color: 
                 allowed_moves.append([row_index, col_index + 1])        # East = [0, 1]
-        if row_index - 1 >= 0:
+        if col_index - 1 >= 0:
             if self.board[row_index][col_index - 1][0] != king_color:                
                 allowed_moves.append([row_index, col_index - 1])        # West = [0, -1]
 

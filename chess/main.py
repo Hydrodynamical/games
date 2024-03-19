@@ -4,7 +4,7 @@ from scr.chess_engine import GameState  # our chess engine module
 from PIL import Image, ImageTk          # for image manipulation and use in tkinter
 import os                               # for accessing image files found in a different folder
 
-print(Image.__version__)
+print(f"Tkinter version = {Image.__version__}")
 
 WINDOW_NAME = "Chess"           # set window name
 SQUARE_LENGTH = 60              # set square length
@@ -22,7 +22,7 @@ board_frm.grid(row = 0, column=0)
 info_frm.grid(row=0, column=1)
 
 # add textbox into info_frame
-text_box = tk.Label(info_frm, text = "White goes first.", font= ("Courier", 12))
+text_box = tk.Label(info_frm, text = "White goes first.\n\n Left click to move.\n\nRight click to see available moves.", font= ("Courier", 12))
 text_box.pack()
 
 # load in images 
@@ -114,24 +114,23 @@ def find_coords(event):
             break #break out of loop if clicked canvas is not in row
     return [row_index, col_index]
 
-def update_text_info(game, checkmate = False, stalemate = False):
+def update_text_info(game, show_board_string = False, checkmate = False, stalemate = False):
     """Update the text information about the game in text_box label"""
     row_str_len = len(str(["bR", "bN", "bB", "bQ", "bK", "bB", "bN", "bR"]))
     info_text = "Current player is: " + game.player
     info_text = info_text + "\nTurn number is: " + str(game.turn) +"\n\n\n"
 
-    # add an asthetic divider
-    for _ in range(row_str_len):
-        info_text = info_text + "="
-    info_text = info_text + "\n"
-
     # display current board string
-    info_text = info_text + game.get_board_string()
-
-    # add an asthetic divider
-    for _ in range(row_str_len):
-        info_text = info_text + "="
-    info_text = info_text + "\n"
+    if show_board_string:
+        # add an asthetic divider
+        for _ in range(row_str_len):
+            info_text = info_text + "="
+        info_text = info_text + "\n"
+        info_text = info_text + game.get_board_string()
+        # add an asthetic divider
+        for _ in range(row_str_len):
+            info_text = info_text + "="
+        info_text = info_text + "\n"
 
     # if checkmate occurs print message
     if checkmate:
