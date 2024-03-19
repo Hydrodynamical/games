@@ -4,6 +4,7 @@ from chess_engine import GameState  # our chess engine module
 from PIL import Image, ImageTk      # for image manipulation and use in tkinter
 import os                           # for accessing image files found in a different folder
 
+print(Image.__version__)
 WINDOW_NAME = "Chess"           # set window name
 SQUARE_LENGTH = 60              # set square length
 game = GameState()              # create instance of GameState class

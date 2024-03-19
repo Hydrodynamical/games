@@ -6,6 +6,7 @@
     checking if move is available.
 
 '''
+
 from copy import deepcopy
 
 class GameState():
