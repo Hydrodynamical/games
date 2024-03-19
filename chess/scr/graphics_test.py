@@ -136,7 +136,7 @@ def update_text_info(game, checkmate = False, stalemate = False):
         info_text = info_text + "\nCheckmate!\n\n"
         info_text = info_text + "Player " + str(game.opponent_color()) + " has won."
 
-    if stalemate:
+    elif stalemate:
         info_text = info_text + "\nStalemate!\n\n"
 
     # add the resulting info_text to the text_box
