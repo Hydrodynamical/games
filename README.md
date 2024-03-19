@@ -12,10 +12,8 @@ Then navigate to the game you would like to try out. For example
 
 `cd chess`
 
-and then 
+and then to run the program 
 
-`python3 `
-### Prerequisites
+`python3 main.py`
 
-What things you need to install the software and how to install them.
 
