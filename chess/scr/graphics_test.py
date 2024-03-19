@@ -112,7 +112,7 @@ def find_coords(event):
             break #break out of loop if clicked canvas is not in row
     return [row_index, col_index]
 
-def update_text_info(game, checkmate = False):
+def update_text_info(game, checkmate = False, stalemate = False):
     """Update the text information about the game in text_box label"""
     row_str_len = len(str(["bR", "bN", "bB", "bQ", "bK", "bB", "bN", "bR"]))
     info_text = "Current player is: " + game.player
@@ -135,6 +135,9 @@ def update_text_info(game, checkmate = False):
     if checkmate:
         info_text = info_text + "\nCheckmate!\n\n"
         info_text = info_text + "Player " + str(game.opponent_color()) + " has won."
+
+    if stalemate:
+        info_text = info_text + "\nStalemate!\n\n"
 
     # add the resulting info_text to the text_box
     text_box.config(text = info_text, font = ("Courier", 12))
@@ -185,7 +188,8 @@ def on_left_click(event):
             game.move_piece(two_click_history_L)      # move_pieces accordingly
             clear_photos(two_click_history_L)        # clear the images from canvas_grid
             draw_pieces(board=game.board)           # draw new positions on canvas_grid
-            update_text_info(game, checkmate = game.is_checkmate())                  # update text info about the game
+            update_text_info(game, checkmate = game.is_checkmate(),
+                             stalemate= game.is_stalemate())                  # update text info about the game
         reset_border(two_click_history_L[0])  # reset border even if move isn't valid
         reset_background()                        # reset the background of all squares
         two_click_history_L.clear()           # clear click history 

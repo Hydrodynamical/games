@@ -629,5 +629,9 @@ class GameState():
 
     def is_stalemate(self):
         """Checks in history to determine if current position is stalemate."""
-        pass
+        total_legal_moves = len(self.get_all_legal_moves(self.player))
+        if total_legal_moves == 0:
+            return True
+        else:
+            return False
 
