@@ -8,7 +8,13 @@ First, clone the github repository by running the following code in the terminal
 
 `git clone https://github.com/Hydrodynamical/games.git`
 
-Then navigate to 
+Then navigate to the game you would like to try out. For example 
+
+`cd chess`
+
+and then 
+
+`python3 `
 ### Prerequisites
 
 What things you need to install the software and how to install them.

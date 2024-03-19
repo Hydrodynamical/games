@@ -26,7 +26,7 @@ text_box = tk.Label(info_frm, text = "White goes first.", font= ("Courier", 12))
 text_box.pack()
 
 # load in images 
-image_folder_path = "chess/scr/chess_piece_images"
+image_folder_path = "scr/chess_piece_images"
 piece_names = ["bB", "bK", "bN", "bP", "bQ", "bR", "wB", "wK", "wN", "wP", "wQ", "wR"]
 
 # create dictionary for accessing image path names by piece_name
