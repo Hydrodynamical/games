@@ -1,8 +1,8 @@
 """ Generate a graphics test of tkinter for the module chess_engine."""
-import tkinter as tk                # for the GUI
-from chess_engine import GameState  # our chess engine module
-from PIL import Image, ImageTk      # for image manipulation and use in tkinter
-import os                           # for accessing image files found in a different folder
+import tkinter as tk                    # for the GUI
+from scr.chess_engine import GameState  # our chess engine module
+from PIL import Image, ImageTk          # for image manipulation and use in tkinter
+import os                               # for accessing image files found in a different folder
 
 print(Image.__version__)
 
@@ -14,8 +14,8 @@ root.title(WINDOW_NAME)         # sets title of the window
 board_frm = tk.Frame(root)      # create frame for the chess board
 info_frm = tk.Frame(root)       # create frame for text information
 two_click_history_L = []        # init history for user left clicks
-two_click_history_R = []
-two_click_history_M = []
+two_click_history_R = []        # init history for user right clicks
+two_click_history_M = []        # init history for user middle clicks
 
 # position board and info in frame
 board_frm.grid(row = 0, column=0)
@@ -234,7 +234,7 @@ def highlight_available_moves(event):
 def on_middle_click(event):
     coord = find_coords(event)
     print(f"Middle button clicked at {coord}!")
-    
+
 # bind mouse clicks to functions
 for canvas_row in canvas_grid:
     for square in canvas_row:

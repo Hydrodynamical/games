@@ -4,8 +4,11 @@ This project contains basic game engines written in Python with minimal package 
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+First, clone the github repository by running the following code in the terminal:
 
+`git clone https://github.com/Hydrodynamical/games.git`
+
+Then navigate to 
 ### Prerequisites
 
 What things you need to install the software and how to install them.
