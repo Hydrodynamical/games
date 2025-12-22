@@ -4,8 +4,6 @@ from scr.chess_engine import GameState  # our chess engine module
 from PIL import Image, ImageTk          # for image manipulation and use in tkinter
 import os                               # for accessing image files found in a different folder
 
-print(f"Tkinter version = {Image.__version__}")
-
 WINDOW_NAME = "Chess"           # set window name
 SQUARE_LENGTH = 60              # set square length
 game = GameState()              # create instance of GameState class
@@ -17,6 +15,9 @@ two_click_history_L = []        # init history for user left clicks
 two_click_history_R = []        # init history for user right clicks
 two_click_history_M = []        # init history for user middle clicks
 
+# print Tk version
+print("Tk version =", root.tk.call("info", "patchlevel"))
+
 # position board and info in frame
 board_frm.grid(row = 0, column=0)
 info_frm.grid(row=0, column=1)
@@ -25,8 +26,9 @@ info_frm.grid(row=0, column=1)
 text_box = tk.Label(info_frm, text = "White goes first.\n\n Left click to move.\n\nRight click to see available moves.", font= ("Courier", 12))
 text_box.pack()
 
-# load in images 
-image_folder_path = "scr/chess_piece_images"
+# load in images using a path relative to this file's directory
+script_dir = os.path.dirname(os.path.abspath(__file__))
+image_folder_path = os.path.join(script_dir, "scr", "chess_piece_images")
 piece_names = ["bB", "bK", "bN", "bP", "bQ", "bR", "wB", "wK", "wN", "wP", "wQ", "wR"]
 
 # create dictionary for accessing image path names by piece_name
@@ -34,7 +36,7 @@ image_path_names  = {} # dictionary of {"bB": "chess_piece_images/bB.png", ...}
 for piece_name in piece_names:
     image_path_names[piece_name] = os.path.join(image_folder_path , piece_name + ".png")
 
-# create dictonary for accessing images from piece name
+# create dictionary for accessing images from piece name
 piece_photos = {} # dictionary of {"piece_name": photo, ...}
 for piece_name in piece_names:
     image = Image.open(image_path_names[piece_name]).resize((SQUARE_LENGTH, SQUARE_LENGTH))

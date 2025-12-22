@@ -94,7 +94,7 @@ class GameState():
         selected_piece = self.board[row_0][col_0]       # get the string of the selected piece
         self.board[row_0][col_0] = "--"                 # set selected square to be empty
         self.board[row_1][col_1] = selected_piece       # set target square to contain the selected piece
-        self.history.append(self.board)                 # append new state of the board to the history
+        self.history.append(deepcopy(self.board))                 # append new state of the board to the history
 
         # increment turns and switch players
         self.turn += 1                                  
@@ -126,9 +126,10 @@ class GameState():
         else:
             return "b"
         
-    def pawn_available_moves(self, selected_pawn, board_dimensions = 8, respect_turn_order = True):
+    def pawn_available_moves(self, selected_pawn, board_dimensions = 8, respect_turn_order = True, is_attack=False):
         """Given a selected pawn, get available moves on board
         selected_pawn = [row, column]
+        is_attack: if True, only return attacking moves
         Returns  [allowed_moves]
         TODO: Add en passant"""
         allowed_moves = [] # initialize list of allowed_moves to be returned
@@ -140,13 +141,13 @@ class GameState():
             return [] 
         
         def white_pawn_logic():
-            # forward check
-            if row_index > 0: # square isn't off the board
+            # check if forward space available 
+            if row_index >=1: # check square isn't off the board
                 if self.board[row_index - 1][col_index] == "--": # no piece in front of pawn
                     allowed_moves.append([row_index - 1, col_index])
                 
-                # diagonals check
-                if col_index >= 0: 
+                # check if diagonal spaces can take pieces
+                if col_index >= 1: 
                     if self.board[row_index - 1][col_index-1][0] == "b":        # diagonal left has black piece
                         allowed_moves.append([row_index - 1, col_index-1])
                 if col_index < board_dimensions - 1: 
@@ -161,12 +162,12 @@ class GameState():
             
         def black_pawn_logic():
             # forward check
-            if row_index < board_dimensions: # square isn't off the board
+            if row_index < board_dimensions-1: # square isn't off the board
                 if self.board[row_index + 1][col_index] == "--": # no piece in front of pawn
                     allowed_moves.append([row_index + 1, col_index])
                 
                 # diagonals check
-                if col_index >= 0: 
+                if col_index >= 1: 
                     if self.board[row_index + 1][col_index-1][0] == "w":        # diagonal left has white piece
                         allowed_moves.append([row_index + 1, col_index-1])
                 if col_index < board_dimensions - 1: 
@@ -180,13 +181,29 @@ class GameState():
                         allowed_moves.append([row_index + 2, col_index]) # only need to add the two steps move
     
         if pawn_color == "w":
+            if is_attack:
+                # pawns attack diagonally forward regardless of occupancy
+                if row_index - 1 >= 0:
+                    if col_index - 1 >= 0:
+                        allowed_moves.append([row_index - 1, col_index - 1])
+                    if col_index + 1 < board_dimensions:
+                        allowed_moves.append([row_index - 1, col_index + 1])
+                return allowed_moves
+            # otherwise run your normal move generation (pushes + captures)
             white_pawn_logic()
         else:
+            if is_attack:
+                if row_index + 1 < board_dimensions:
+                    if col_index - 1 >= 0:
+                        allowed_moves.append([row_index + 1, col_index - 1])
+                    if col_index + 1 < board_dimensions:
+                        allowed_moves.append([row_index + 1, col_index + 1])
+                return allowed_moves
             black_pawn_logic()
             
         return allowed_moves
 
-    def rook_available_moves(self, selected_rook, board_dimensions = 8, respect_turn_order = True):
+    def rook_available_moves(self, selected_rook, board_dimensions = 8, respect_turn_order = True, **kwargs):
         """Given a selected rook get available moves on board.
         selected_rook = [row, column].
         Rooks have to respect turn order for capture criterion
@@ -269,7 +286,7 @@ class GameState():
 
         return allowed_moves
 
-    def king_available_moves(self, selected_king, board_dimensions = 8, respect_turn_order = True):
+    def king_available_moves(self, selected_king, board_dimensions = 8, respect_turn_order = True, **kwargs):
         """Given a selected king, get available moves on board.
         selected_pawn = [row, column]
         Returns  [allowed_moves]
@@ -285,40 +302,39 @@ class GameState():
         
 
         """Check the adjacent squares"""
-        if row_index + 1 < board_dimensions: 
-            if self.board[row_index + 1][col_index][0] != king_color: 
-                allowed_moves.append([row_index + 1, col_index])        # South = [1, 0]
-        if row_index - 1 >= 0:
-            if self.board[row_index - 1][col_index][0] != king_color:              
+        if row_index + 1 < board_dimensions: # on board
+            if self.board[row_index + 1][col_index][0] != king_color: # not your own piece
+                    allowed_moves.append([row_index + 1, col_index])        # South = [1, 0]
+        if row_index - 1 >= 0:              # on board
+            if self.board[row_index - 1][col_index][0] != king_color:          # not your own piece
                 allowed_moves.append([row_index - 1, col_index])        # North = [-1, 0]
-        if col_index + 1 < board_dimensions:
-            if self.board[row_index][col_index + 1][0] != king_color: 
+        if col_index + 1 < board_dimensions: # on board
+            if self.board[row_index][col_index + 1][0] != king_color: # not your own piece
                 allowed_moves.append([row_index, col_index + 1])        # East = [0, 1]
-        if col_index - 1 >= 0:
-            if self.board[row_index][col_index - 1][0] != king_color:                
+        if col_index - 1 >= 0: # on board
+            if self.board[row_index][col_index - 1][0] != king_color: # not your own piece
                 allowed_moves.append([row_index, col_index - 1])        # West = [0, -1]
 
         """Check the diagonal entries"""
-        if row_index + 1 < board_dimensions: 
-            if col_index + 1 < board_dimensions:
+        if row_index + 1 < board_dimensions: # on board
+            if col_index + 1 < board_dimensions: # on board
                 if self.board[row_index + 1][col_index + 1][0] != king_color: 
                     allowed_moves.append([row_index + 1, col_index + 1]) # South-east = [1, 1]
-        if row_index + 1 < board_dimensions: 
-            if col_index - 1 >= 0:
+        if row_index + 1 < board_dimensions: # on board
+            if col_index - 1 >= 0:              # on board
                 if self.board[row_index + 1][col_index - 1][0] != king_color: 
                     allowed_moves.append([row_index + 1, col_index - 1]) # South-west = [1, -1]
-        if row_index - 1 >= 0:               
-            if col_index + 1 < board_dimensions:
+        if row_index - 1 >= 0:             # on board  
+            if col_index + 1 < board_dimensions: # on board
                 if self.board[row_index - 1][col_index + 1][0] != king_color: 
                     allowed_moves.append([row_index - 1, col_index + 1]) # North-east = [-1, 1]
-        if row_index - 1 >= 0:              
-            if col_index - 1 >= 0:
+        if row_index - 1 >= 0:  #           on board            
+            if col_index - 1 >= 0:  # on board
                 if self.board[row_index - 1][col_index - 1][0] != king_color: 
                     allowed_moves.append([row_index - 1, col_index - 1]) # North-west = [-1, -1]
-
         return allowed_moves
         
-    def bishop_available_moves(self, selected_bishop, board_dimensions = 8, respect_turn_order = True):
+    def bishop_available_moves(self, selected_bishop, board_dimensions = 8, respect_turn_order = True, **kwargs):
         """Given a selected bishop, get available moves on board.
         selected_bishop = [row, column]
         Returns  [allowed_moves]
@@ -422,7 +438,7 @@ class GameState():
         allowed_moves.extend(self.bishop_available_moves(selected_queen, **kwargs))
         return allowed_moves
 
-    def knight_available_moves(self, selected_knight, board_dimensions = 8, respect_turn_order = True):
+    def knight_available_moves(self, selected_knight, board_dimensions = 8, respect_turn_order = True, **kwargs):
         """Given a selected knight, get available moves on board.
         selected_knight = [row, column]
         Returns  [allowed_move[0], ...]
@@ -436,7 +452,6 @@ class GameState():
             return []
 
         # create relative jump directions
-        # see knight_jumps.py for simple code generation
         jumps = [[1, 2], [1, -2], [-1, 2], [-1, -2], [2, 1], [2, -1], [-2, 1], [-2, -1]]
 
         for jump in jumps:
@@ -518,20 +533,17 @@ class GameState():
             valid_move_func = getattr(GameState, FUNCTION_DICT[piece_name])
             valid_moves = valid_move_func(self, coord, **kwargs)
         return valid_moves
-    
-    def get_available_moves(self, coord, **kwargs):
-        """Return the available possible moves of the coordinates as a list of coordinates [[row, col], ...]. If the selected_piece is the empty square return []."""
-        FUNCTION_DICT = {"P": "pawn_available_moves", "B": "bishop_available_moves", 
-                         "Q": "queen_available_moves", "R": "rook_available_moves",
-                         "K": "king_available_moves", "N": "knight_available_moves"}
-        valid_moves = []
-        row, col = coord
-        piece_name = self.board[row][col][1]
-        if piece_name != "-":
-            valid_move_func = getattr(GameState, FUNCTION_DICT[piece_name])
-            valid_moves = valid_move_func(self, coord, **kwargs)
-        return valid_moves
         
+    def get_all_available_attacks(self, player_color):
+        """return all available attacks of player_color = "b" or "w" """
+        all_valid_attacks = []
+        for row, row_list_string in enumerate(self.board):
+            for col, _ in enumerate(row_list_string):
+                if self.board[row][col][0] == player_color:
+                    all_valid_attacks = all_valid_attacks + \
+                    self.get_available_moves([row, col], respect_turn_order = False, is_attack=True)
+        return all_valid_attacks
+    
     def get_all_available_moves(self, player_color):
         """return all available moves of player_color = "b" or "w" """
         all_valid_moves = []
@@ -539,12 +551,12 @@ class GameState():
             for col, _ in enumerate(row_list_string):
                 if self.board[row][col][0] == player_color:
                     all_valid_moves = all_valid_moves + \
-                    self.get_available_moves([row, col], respect_turn_order = False)
+                    self.get_available_moves([row, col], respect_turn_order = False, is_attack=False)
         return all_valid_moves
 
     def is_checked(self, coord, color):
         """Returns true if if square at coords = [row, col] is being attacked by color."""
-        attack_moves = self.get_all_available_moves(color)
+        attack_moves = self.get_all_available_attacks(color)
         if coord in attack_moves:
             return True
         else:
@@ -557,48 +569,43 @@ class GameState():
             for col in range(self.board_dimension):
                 if self.board[row][col] == king_name:
                     return [row, col]
-                
+    
     def get_legal_moves(self, coord):
-        """Get all legal moves coord = [row, col]. These legal moves are available moves of the piecethat do not put the king in check. 
-        Returns List([row,col]). 
-        This function requires deepcopy, and not copy in order to access new move states.
-        """ 
-        FUNCTION_DICT = {"P": "pawn_available_moves", "B": "bishop_available_moves", 
-                         "Q": "queen_available_moves", "R": "rook_available_moves",
-                         "K": "king_available_moves", "N": "knight_available_moves"}
+        """Legal moves = available moves that do not leave your king in check."""
+        FUNCTION_DICT = {"P": "pawn_available_moves", "B": "bishop_available_moves",
+                        "Q": "queen_available_moves", "R": "rook_available_moves",
+                        "K": "king_available_moves", "N": "knight_available_moves"}
+
         legal_moves = []
         row, col = coord
         piece_name = self.board[row][col][1]
-        king_coord = self.get_king_coord(color = self.player)
+        mover_color = self.player
 
-        # Check non-empty and squares that are not the king
-        if piece_name != "-" and piece_name != "K":   # if has a piece get available moves
-            piece_available_move_func = getattr(GameState, FUNCTION_DICT[piece_name])
-            available_moves = piece_available_move_func(self, coord) 
-            legal_moves = piece_available_move_func(self, coord) 
-            for move in available_moves:
-                copy_player = deepcopy(self)
-                copy_player.move_piece([coord, move])        # put yourself in opponent perspective
-                opponent_moves = copy_player.get_all_available_moves(self.opponent_color())
-                if king_coord in opponent_moves:
-                    legal_moves.remove(move)          # pop out illegal moves
-                copy_player.undo_move_piece([coord, move])  
-        # Check king logic
-        elif piece_name == "K":
-            piece_available_move_func = getattr(GameState, FUNCTION_DICT[piece_name])
-            available_moves = piece_available_move_func(self, coord) 
-            legal_moves = piece_available_move_func(self, coord) 
-            for move in available_moves:
-                copy_player = deepcopy(self)
-                copy_player.move_piece([coord, move])        # become opponent 
-                opponent_moves = copy_player.get_all_available_moves(self.opponent_color())
-                if (move in opponent_moves):
-                    legal_moves.remove(move)                # pop out move into check
-                if (coord in opponent_moves) and (coord in legal_moves):
-                    legal_moves.remove(coord)                # pop out stay in check
-                copy_player.undo_move_piece([coord, move])   # undo move
-                
+        if piece_name == "-":
+            return []
+        piece_available_move_func = getattr(GameState, FUNCTION_DICT[piece_name])
+
+        # candidate moves (pseudo-legal)
+        available_moves = piece_available_move_func(self, coord, respect_turn_order=False, is_attack=False)
+        legal_moves = list(available_moves)
+
+        for move in available_moves:
+            copy_player = deepcopy(self)
+            copy_player.move_piece([coord, move])
+
+            # after move_piece, copy_player.player is now the opponent to move
+            attacker_color = copy_player.player  # the side that would attack our king
+            our_king = copy_player.get_king_coord(color=mover_color)
+
+            opponent_attacks = copy_player.get_all_available_attacks(attacker_color)
+
+            # illegal if our king is attacked
+            if our_king in opponent_attacks:
+                if move in legal_moves:
+                    legal_moves.remove(move)
+
         return legal_moves
+
 
     def is_legal_move(self, move_pair):
         """Returns true if move pair is valid move. move_pair[0] = initial"""
@@ -611,11 +618,15 @@ class GameState():
     def get_all_legal_moves(self, player_color):
         """returns all legal move coordinates of player_color"""
         all_legal_moves = []
-        for row, row_list_string in enumerate(self.board):
-            for col, _ in enumerate(row_list_string):
-                if self.board[row][col][0] == player_color:
-                    all_legal_moves = all_legal_moves + \
-                    self.get_legal_moves([row, col])
+        saved_player = self.player
+        self.player = player_color
+        try:
+            for row, row_list_string in enumerate(self.board):
+                for col, _ in enumerate(row_list_string):
+                    if self.board[row][col][0] == player_color:
+                        all_legal_moves += self.get_legal_moves([row, col])
+        finally:
+            self.player = saved_player
         return all_legal_moves
 
     def is_checkmate(self):
