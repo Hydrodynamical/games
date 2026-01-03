@@ -85,8 +85,11 @@ def draw_pieces(board):
     """This function draws the pieces on the board on the same frame of a background canvas_grid
     board = GameState().board
     canvas_grid = draw_board(frame)"""
+    # Remove all existing piece sprites from the canvas
     for row in range(len(board)):
         for col in range(len(board)):
+            # clear existing images first
+            canvas_grid[row][col].delete("all") # needed to implement undo move
             if board[row][col] != "--": # if the square is not empty
                 piece_name = board[row][col]
                 canvas_grid[row][col].create_image(int(SQUARE_LENGTH/2), 
@@ -124,12 +127,12 @@ def update_text_info(game, show_board_string = False, checkmate = False, stalema
 
     # display current board string
     if show_board_string:
-        # add an asthetic divider
+        # add an aesthetic divider
         for _ in range(row_str_len):
             info_text = info_text + "="
         info_text = info_text + "\n"
         info_text = info_text + game.get_board_string()
-        # add an asthetic divider
+        # add an aesthetic divider
         for _ in range(row_str_len):
             info_text = info_text + "="
         info_text = info_text + "\n"
@@ -157,7 +160,7 @@ def reset_border(board_coord):
     row_index, col_index = board_coord
     canvas_grid[row_index][col_index].config(highlightbackground= "black")
 
-def highlight_background(board_coord, color = "#8FC500"):
+def highlight_background(board_coord, color = "#4CC500"):
     """highlight the background on canvas_grid with a specified color"""
     row_index, col_index = board_coord
     canvas_grid[row_index][col_index].config(bg = color)
@@ -184,64 +187,61 @@ def on_left_click(event):
     if len(two_click_history_L) == 1:
         highlight_border(two_click_history_L[0])
 
-
     # check if two clicks have been registered
-    if len(two_click_history_L) == 2:                
-        if game.is_legal_move(two_click_history_L):   # check if valid chess move
-            game.move_piece(two_click_history_L)      # move_pieces accordingly
-            clear_photos(two_click_history_L)        # clear the images from canvas_grid
-            draw_pieces(board=game.board)           # draw new positions on canvas_grid
-            update_text_info(game, checkmate = game.is_checkmate(),
-                             stalemate= game.is_stalemate())                  # update text info about the game
-        reset_border(two_click_history_L[0])  # reset border even if move isn't valid
-        reset_background()                        # reset the background of all squares
-        two_click_history_L.clear()           # clear click history 
+    if len(two_click_history_L) == 2:
+        if game.is_legal_move(two_click_history_L):             # check if valid chess move
+            mv = game.move_from_pair(two_click_history_L)       # create Move object from move_pair   
+            game.make_move(mv)                                  # make the move in the game state
+            clear_photos(two_click_history_L)                   # clear the images from canvas_grid
+            draw_pieces(board=game.board)                       # draw new positions on canvas_grid
+            update_text_info(game, checkmate=game.is_checkmate(), stalemate=game.is_stalemate())    # update text info about the game
+        reset_border(two_click_history_L[0])                    # reset border even if move isn't valid
+        reset_background()                                      # reset the background of all squares
+        two_click_history_L.clear()                             # clear click history after two clicks
 
+# NEW version of on_right_click
 def on_right_click(event):
-    """This function tells the GUI what to do with right clicks
-    It includes the logic to handle finding valid moves"""
+    """Right click: highlight legal moves. Captures in red, quiet moves in green."""
     coords = find_coords(event)
-    legal_moves = game.get_legal_moves(coords)
 
     two_click_history_R.append(coords)
 
-    # if one click is registered, highlight avaiable moves
     if len(two_click_history_R) == 1:
-        for move in legal_moves:
-            highlight_background(move)
+        # Use Move objects so we can color captures differently
+        legal_moves = game.get_legal_moves(coords)  # returns List[Move]
+
+        for mv in legal_moves:
+            end_sq = list(mv.end)
+            if mv.piece_captured != "--":
+                highlight_background(end_sq, color="#C54800") # for captures
+            else:
+                highlight_background(end_sq)  # default green
 
     if len(two_click_history_R) == 2:
         reset_background()
         two_click_history_R.clear()
 
-def highlight_available_moves(event):
-    """This function tells the GUI what to do with middle clicks
-    It includes the logic to handle finding valid moves"""
-    coord = find_coords(event)
-    row, col = coord
-    two_click_history_M.append(coord)
-    player_color = game.board[row][col][0] # for example "b" or "w"
+# NEW: bind 'u' and 'Backspace' to undo move
+def undo_move(event=None):
+    game.undo_last_move()
+    reset_background()
+    draw_pieces(board=game.board)
+    update_text_info(game, checkmate=game.is_checkmate(), stalemate=game.is_stalemate())
 
-    # if one click is registered, highlight avaiable moves
-    if len(two_click_history_M) == 1:
-        all_valid_moves = game.get_all_available_moves(player_color)
-        for move in all_valid_moves:
-            highlight_background(move, color = "red")
+root.bind("<u>", undo_move)             # press 'u' to undo
+root.bind("<BackSpace>", undo_move)  # press 'Backspace' to undo
 
-    if len(two_click_history_M) == 2:
-        reset_background()
-        two_click_history_M.clear()
+def on_press_p(event=None):
+    game.print_board()
+    game.print_move_log(last_n_moves=30)
 
-def on_middle_click(event):
-    coord = find_coords(event)
-    print(f"Middle button clicked at {coord}!")
+root.bind("<p>", on_press_p)
 
 # bind mouse clicks to functions
 for canvas_row in canvas_grid:
     for square in canvas_row:
         square.bind("<Button-1>", on_left_click)
         square.bind("<Button-3>", on_right_click)
-        square.bind("<Button-2>", on_middle_click)
 
 # run main event loop for Tk
 root.mainloop()

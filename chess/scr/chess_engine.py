@@ -1,18 +1,80 @@
-'''This module contains a class GameState 
-    GameState is responsible for 
-    storing current state of the game,
-    determining available move states, 
-    storing game history,
-    checking if move is available.
-
+'''This module contains a class GameState, and a dataclass Move.
+    GameState is responsible for storing current state of the game, determining available move states, storing game history, and checking if move is available. 
+    Move is responsible for storing information about a particular move, including special moves like en passant and castling.
 '''
 
 from copy import deepcopy
+from dataclasses import dataclass
+from typing import Optional, Tuple, Dict, Iterable
+
+# type alias for square coordinates
+Sq = Tuple[int, int]
+
+# UI / legacy square coordinates (row, col) as a list
+UISq = list[int]
+
+@dataclass
+class Move:
+    """
+    Immutable description of a single chess move.
+
+    Stores start and end squares, moved and captured pieces, and
+    additional metadata needed to represent and undo special moves
+    such as en passant and castling.
+    """
+    start: Sq
+    end: Sq
+    piece_moved: str
+    piece_captured: str = "--"
+
+    # special moves
+    is_en_passant: bool = False
+    ep_captured_square: Optional[Sq] = None
+
+    is_castle: bool = False
+    rook_start: Optional[Sq] = None
+    rook_end: Optional[Sq] = None
+
+    # state snapshots for undo
+    prev_en_passant_target: Optional[Sq] = None
+    prev_castling_rights: Optional[Dict[str, bool]] = None
 
 class GameState():
-    """We shall make the convention that "available moves" are coordinates on the board that are accessable, but not always legal. The following methods have been added dynamically:
-    {"P": "pawn_legal_moves", "B": "bishop_legal_moves", "Q": "queen_legal_moves", "R": "rook_legal_moves", "K": "king_legal_moves", "N": "knight_legal_moves"} """
-    def __init__(self):
+    """
+    Mutable chess position and rules engine.
+
+    This class owns the board state and implements:
+      (1) pseudo-legal move generation ("available moves"): moves consistent with
+          piece motion and occupancy, but not filtered for king safety.
+      (2) legal move generation: pseudo-legal moves filtered by rejecting moves
+          that leave the moving side's king in check.
+      (3) state transitions: applying and undoing moves using `Move` objects.
+
+    Board representation
+    --------------------
+    `self.board` is an 8x8 list of lists of strings. Each square is:
+      - "--" for empty
+      - "<color><piece>" for a piece, e.g. "wP", "bK", where color ∈ {"w","b"}
+        and piece ∈ {"P","N","B","R","Q","K"}.
+
+    Special-move state
+    ------------------
+    `en_passant_target` and `castling_rights` store the extra state needed for
+    en passant and castling (some rules may be implemented later).
+
+    History / undo model
+    --------------------
+    Moves are logged in `move_log` as `Move` objects. Each `Move` may include
+    snapshots of special-move state (e.g. prior castling rights) so that
+    `undo_last_move()` can restore the exact previous state.
+    """
+    def __init__(self: "GameState") -> None:
+        """
+        Initialize a new chess game state.
+
+        Sets up the initial board position, player turn, move history,
+        and state required for special moves (en passant and castling).
+        """
         # piece encoding:
         # "b" = black
         # "w" = white
@@ -42,15 +104,30 @@ class GameState():
         # board history is empty list
         self.history = []
 
+        # NEW: move history as Move objects (will replace self.history)
+        self.move_log = []
+
+        # NEW: state for special moves (used later)
+        self.en_passant_target = None
+        self.castling_rights = {
+        "wK": True,  # White king-side castling (O-O)
+        "wQ": True,  # White queen-side castling (O-O-O)
+        "bK": True,  # Black king-side castling
+        "bQ": True,  # Black queen-side castling
+        }
+
         # easy access for board dimension 
         self.board_dimension = 8
 
-    def print_board(self):
-        '''Prints the board, the current player'''
-        board_length = len(self.board)
-
+    def print_board(self: "GameState", board_dimensions: int = 8) -> None:
+        """
+        Print the current board position, active player, and turn number in a human-readable format.
+        """
+        # print aesthetic divider
+        print("\n" + "=" * 48)
+        print("Current board position:\n")
         # print board
-        for row in range(board_length):
+        for row in range(board_dimensions):
             row_string = str(self.board[row])
             print(row_string + "\n")
         
@@ -60,590 +137,796 @@ class GameState():
         # print turn number
         print("Turn number = " + str(self.turn))
 
-        # print asthetic divider
-        row_string_len = len(str(self.board[0]))
-        divider = ""
-        for _ in range(row_string_len):
-            divider = divider + "="
-        print(divider)
+        # print aesthetic divider
+        print("\n" + "=" * 48)
     
-    def get_board_string(self):
-        """Get the current board state as a string"""
+    def print_move_log(self : "GameState", last_n_moves: int | None = None):
+        """
+        Print the move history stored in move_log.
+
+        Parameters
+        ----------
+        last_n_moves : int or None
+            If given, print only the last N moves.
+            If None, print the full history.
+        """
+        # print aesthetic divider
+        print("\n" + "=" * 48)
+        print("Move history:\n")
+
+        if not hasattr(self, "move_log") or len(self.move_log) == 0:
+            print("  (empty)")
+            return
+
+        moves = self.move_log
+        if last_n_moves is not None:
+            moves = moves[-last_n_moves:]
+
+        for i, mv in enumerate(moves, start=1):
+            special = []
+            if getattr(mv, "is_castle", False):
+                special.append("castle")
+            if getattr(mv, "is_en_passant", False):
+                special.append("en-passant")
+
+            special_str = f" [{', '.join(special)}]" if special else ""
+            print(
+                f"  {i:>3}: {mv.piece_moved} {mv.start} -> {mv.end}"
+                f"  cap={mv.piece_captured}{special_str}"
+            )
+        # print aesthetic divider
+        print("\n" + "=" * 48)
+
+    def get_board_string(self: "GameState") -> str:
+        """
+        Return a string representation of the current board position.
+
+        Each row of the board is rendered on its own line.
+        """
         board_string = ""
         for row in self.board:
             board_string = board_string + str(row) + "\n"
         return board_string
 
-    def switch_player(self):
-        '''Switches player order'''
+    def switch_player(self: "GameState") -> None:
+        """
+        Switch the active player from white to black or vice versa.
+        """
         if self.player == "w":
             self.player = "b"
         else:
             self.player = "w"
 
-    def move_piece(self, move_pair):
-        """This function moves a piece from move_pair[0] to move_pair[1]
-        move_pair = [[row_0, col_0], [row_1, col_1]]
+    def move_from_pair(self: "GameState", move_pair: Sq) -> Move:
         """
+        Construct a Move object from a pair of start and end squares.
 
-        # get rows and columns of moves 
-        row_0, col_0 = move_pair[0]
-        row_1, col_1 = move_pair[1]
+        Parameters
+        ----------
+        move_pair : ((int, int), (int, int))
+            Start and end coordinates.
 
-        # change board and append to history
-        selected_piece = self.board[row_0][col_0]       # get the string of the selected piece
-        self.board[row_0][col_0] = "--"                 # set selected square to be empty
-        self.board[row_1][col_1] = selected_piece       # set target square to contain the selected piece
-        self.history.append(deepcopy(self.board))                 # append new state of the board to the history
+        Returns
+        -------
+        Move
+            A Move object representing the action on the current board.
+        """
+        (r0, c0), (r1, c1) = move_pair
+        piece_moved = self.board[r0][c0]
+        piece_captured = self.board[r1][c1]
+        return Move(start=(r0, c0), end=(r1, c1), piece_moved=piece_moved, piece_captured=piece_captured)
 
-        # increment turns and switch players
-        self.turn += 1                                  
+    def make_move(self: "GameState", mv: Move) -> None:
+        """
+        Apply a Move to the board and update game state.
+
+        Records sufficient information inside the Move object to allow
+        the operation to be undone later.
+        """
+        # snapshot state (for future en passant / castling)
+        mv.prev_en_passant_target = getattr(self, "en_passant_target", None)
+        mv.prev_castling_rights = getattr(self, "castling_rights", None)
+        if isinstance(mv.prev_castling_rights, dict):
+            mv.prev_castling_rights = mv.prev_castling_rights.copy()
+
+        (r0, c0), (r1, c1) = mv.start, mv.end
+
+        # apply move on board (basic)
+        self.board[r0][c0] = "--"
+        self.board[r1][c1] = mv.piece_moved
+
+        # (special moves later)
+
+        # log move
+        self.move_log.append(mv)
+
+        # legacy history (keep for now so nothing else breaks)
+        self.history.append(deepcopy(self.board))
+
+        # advance turn
+        self.turn += 1
         self.switch_player()
 
-    def undo_move_piece(self, move_pair):
-        """This function moves a piece from move_pair[1] to move_pair[0].
-        This function is the inverse of move_piece.
+    def _mk_move(self: "GameState", start: Sq, end: Sq) -> Move:
         """
+        Internal helper to construct a Move from start and end squares
+        using the current board state.
+        """
+        r0, c0 = start
+        r1, c1 = end
+        return Move(
+            start=start,
+            end=end,
+            piece_moved=self.board[r0][c0],
+            piece_captured=self.board[r1][c1],
+        )
 
-        # get rows and columns of moves 
-        row_0, col_0 = move_pair[1]
-        row_1, col_1 = move_pair[0]
+    def undo_last_move(self: "GameState") -> None:
+        """
+        Undo the most recently executed move.
 
-        # change board and append to history
-        selected_piece = self.board[row_0][col_0]       # get the string of the selected piece
-        self.board[row_0][col_0] = "--"                 # set selected square to be empty
-        self.board[row_1][col_1] = selected_piece       # set target square to contain the selected piece
-        self.history.pop()                              # pop the last history
+        Restores board position, player turn, and special-move state.
+        """
+        if not self.move_log:
+            return
 
-        # decrement turn and switch players
-        self.turn -= 1                                  
+        mv = self.move_log.pop()
+
+        # revert turn
+        self.turn -= 1
         self.switch_player()
 
-    def opponent_color(self):
-        """Returns opponents color as a string ("b" or "w")"""
+        (r0, c0), (r1, c1) = mv.start, mv.end
+
+        # undo board
+        self.board[r0][c0] = mv.piece_moved
+        self.board[r1][c1] = mv.piece_captured
+
+        # restore state snapshots
+        if hasattr(self, "en_passant_target"):
+            self.en_passant_target = mv.prev_en_passant_target
+        if hasattr(self, "castling_rights") and mv.prev_castling_rights is not None:
+            self.castling_rights = mv.prev_castling_rights
+
+        # legacy history (keep consistent)
+        if self.history:
+            self.history.pop()
+
+    def opponent_color(self: "GameState") -> str:
+        """
+        Return the color of the opponent of the current player.
+
+        Returns
+        -------
+        str
+            "w" if the current player is black, otherwise "b".
+        """
         if self.player == "b":
             return "w"
         else:
             return "b"
-        
-    def pawn_available_moves(self, selected_pawn, board_dimensions = 8, respect_turn_order = True, is_attack=False):
-        """Given a selected pawn, get available moves on board
-        selected_pawn = [row, column]
-        is_attack: if True, only return attacking moves
-        Returns  [allowed_moves]
-        TODO: Add en passant"""
-        allowed_moves = [] # initialize list of allowed_moves to be returned
-        row_index, col_index = selected_pawn # get row index or column index of selected pawn
-        pawn_color = self.board[row_index][col_index][0] # eg "wP"
 
-        # if the pawn color is not the current player color and turn order is respected
-        if pawn_color != self.player and respect_turn_order:
-            return [] 
-        
-        def white_pawn_logic():
-            # check if forward space available 
-            if row_index >=1: # check square isn't off the board
-                if self.board[row_index - 1][col_index] == "--": # no piece in front of pawn
-                    allowed_moves.append([row_index - 1, col_index])
-                
-                # check if diagonal spaces can take pieces
-                if col_index >= 1: 
-                    if self.board[row_index - 1][col_index-1][0] == "b":        # diagonal left has black piece
-                        allowed_moves.append([row_index - 1, col_index-1])
-                if col_index < board_dimensions - 1: 
-                    if self.board[row_index - 1][col_index+1][0] == "b":        # diagonal right has black piece
-                        allowed_moves.append([row_index - 1, col_index + 1])
+    def pawn_moves(self: "GameState", start: Sq, board_dimensions: int = 8, respect_turn_order: bool = True, is_attack: bool = False) -> list[Move]:
+        """
+        Generate pseudo-legal pawn moves from a given square.
 
-            # two step check 
-            if row_index == 6: # white pawn is second rank
-                if self.board[row_index - 1][col_index] == "--": # no piece directly in front
-                    if self.board[row_index - 2][col_index] == "--": # no piece two steps in front
-                        allowed_moves.append([row_index-2, col_index]) # only need to add the two steps move
-            
-        def black_pawn_logic():
-            # forward check
-            if row_index < board_dimensions-1: # square isn't off the board
-                if self.board[row_index + 1][col_index] == "--": # no piece in front of pawn
-                    allowed_moves.append([row_index + 1, col_index])
-                
-                # diagonals check
-                if col_index >= 1: 
-                    if self.board[row_index + 1][col_index-1][0] == "w":        # diagonal left has white piece
-                        allowed_moves.append([row_index + 1, col_index-1])
-                if col_index < board_dimensions - 1: 
-                    if self.board[row_index + 1][col_index+1][0] == "w":        # diagonal right has white piece
-                        allowed_moves.append([row_index + 1, col_index + 1])
+        Parameters
+        ----------
+        start : (int, int)
+            Pawn starting square.
+        is_attack : bool
+            If True, generate attack squares only (used for attack maps).
 
-            # two step check 
-            if row_index == 1: # black pawn is seventh
-                if self.board[row_index + 1][col_index] == "--": # no piece directly in front
-                    if self.board[row_index + 2][col_index] == "--": # no piece two steps in front
-                        allowed_moves.append([row_index + 2, col_index]) # only need to add the two steps move
-    
-        if pawn_color == "w":
+        Returns
+        -------
+        list[Move]
+            Pseudo-legal pawn moves.
+        """
+
+        r, c = start                # unpack start square
+        piece = self.board[r][c]    # get piece at start square 
+        # throw error if piece is not pawn
+        if piece[1] != "P" and piece != "--":
+            raise ValueError("pawn_moves called on non-pawn piece")
+        # if empty square, return no moves
+        if piece == "--": 
+            return []
+        color = piece[0]    # get color of pawn
+        # if turn order is respected and pawn color is not current player, return no moves
+        if respect_turn_order and color != self.player:
+            return []
+
+        moves = []
+
+        # white pawn logic
+        if color == "w":
+            fwd = (r - 1, c)        # forward move
+            diagL = (r - 1, c - 1)  # diagonal left attack
+            diagR = (r - 1, c + 1)  # diagonal right attack
+            start_rank = 6
+            two = (r - 2, c)        # two steps forward from start rank
+            enemy = "b"
+
+            # if we're only generating attack moves, return them
             if is_attack:
                 # pawns attack diagonally forward regardless of occupancy
-                if row_index - 1 >= 0:
-                    if col_index - 1 >= 0:
-                        allowed_moves.append([row_index - 1, col_index - 1])
-                    if col_index + 1 < board_dimensions:
-                        allowed_moves.append([row_index - 1, col_index + 1])
-                return allowed_moves
-            # otherwise run your normal move generation (pushes + captures)
-            white_pawn_logic()
+                if r - 1 >= 0:
+                    if c - 1 >= 0: moves.append(self._mk_move((r, c), diagL))
+                    if c + 1 < board_dimensions: moves.append(self._mk_move((r, c), diagR))
+                return moves 
+
+            # one step
+            if r - 1 >= 0 and self.board[fwd[0]][fwd[1]] == "--":
+                moves.append(self._mk_move((r, c), fwd)) 
+                # two step
+                if r == start_rank and self.board[two[0]][two[1]] == "--":
+                    moves.append(self._mk_move((r, c), two))
+
+            # captures
+            if r - 1 >= 0 and c - 1 >= 0 and self.board[diagL[0]][diagL[1]][0] == enemy:
+                moves.append(self._mk_move((r, c), diagL))
+            if r - 1 >= 0 and c + 1 < board_dimensions and self.board[diagR[0]][diagR[1]][0] == enemy:
+                moves.append(self._mk_move((r, c), diagR))
+
+        # black pawn logic
         else:
+            fwd = (r + 1, c)        # forward move
+            diagL = (r + 1, c - 1)  # diagonal left attack
+            diagR = (r + 1, c + 1)  # diagonal right attack
+            start_rank = 1
+            two = (r + 2, c)        # two steps forward from start rank
+            enemy = "w"
+
+            # if we're only generating attack moves, return them
             if is_attack:
-                if row_index + 1 < board_dimensions:
-                    if col_index - 1 >= 0:
-                        allowed_moves.append([row_index + 1, col_index - 1])
-                    if col_index + 1 < board_dimensions:
-                        allowed_moves.append([row_index + 1, col_index + 1])
-                return allowed_moves
-            black_pawn_logic()
-            
-        return allowed_moves
+                if r + 1 < board_dimensions:
+                    if c - 1 >= 0: moves.append(self._mk_move((r, c), diagL))
+                    if c + 1 < board_dimensions: moves.append(self._mk_move((r, c), diagR))
+                return moves
 
-    def rook_available_moves(self, selected_rook, board_dimensions = 8, respect_turn_order = True, **kwargs):
-        """Given a selected rook get available moves on board.
-        selected_rook = [row, column].
-        Rooks have to respect turn order for capture criterion
-        Returns  [allowed_moves]"""
-        allowed_moves = []
-        row_index, col_index = selected_rook
-        rook_color = self.board[row_index][col_index][0] # eg "wR"
+            # one step
+            if r + 1 < board_dimensions and self.board[fwd[0]][fwd[1]] == "--":
+                moves.append(self._mk_move((r, c), fwd))
+                # two step
+                if r == start_rank and self.board[two[0]][two[1]] == "--":
+                    moves.append(self._mk_move((r, c), two))
 
-        # if the rook isn't the right color and we're respecting turn order return nothing
-        if rook_color != self.player and respect_turn_order:
+            # captures
+            if r + 1 < board_dimensions and c - 1 >= 0 and self.board[diagL[0]][diagL[1]][0] == enemy:
+                moves.append(self._mk_move((r, c), diagL))
+            if r + 1 < board_dimensions and c + 1 < board_dimensions and self.board[diagR[0]][diagR[1]][0] == enemy:
+                moves.append(self._mk_move((r, c), diagR))
+
+        return moves
+
+    def rook_moves(self: "GameState", start: Sq, board_dimensions: int = 8, respect_turn_order: bool = True, **kwargs) -> list[Move]:
+        """
+        Generate pseudo-legal rook moves from a given square.
+
+        Parameters
+        ----------
+        start : (int, int)
+            Rook starting square.
+        board_dimensions : int, optional (default=8)
+            Size of the board (assumed square).
+        respect_turn_order : bool, optional (default=True)
+            If True, return no moves unless the rook color matches `self.player`.
+            If False, generate moves regardless of whose turn it is (useful for
+            generating opponent move sets / attack maps).
+
+        Returns
+        -------
+        list[Move]
+            Pseudo-legal rook moves (captures included). Moves are not filtered
+            for king safety (i.e., they may be illegal in check contexts).
+
+        Notes
+        -----
+        Any extra keyword arguments are ignored (present for a uniform dispatcher
+        interface).
+        """
+        r, c = start               # unpack start square
+        piece = self.board[r][c]   # get piece at start square
+        # throw error if piece is not rook
+        if piece[1] != "R" and piece != "--":
+            raise ValueError("rook_moves called on non-rook piece")
+        # if empty square, return no moves
+        if piece == "--":
+            return []
+        color = piece[0]   # get color of rook
+        # if turn order is respected and rook color is not current player, return no moves
+        if respect_turn_order and color != self.player:
             return []
 
-        # check north direction
-        proposed_row = row_index    # default proposed row to the selected rook row
-        proposed_col = col_index    # default proposed col to the selected rook col
-        for _ in range(row_index):  # make sure on game board
-            proposed_row -= 1       # move north one step
+        moves = []
 
-            # check if square is empty : 
-            if self.board[proposed_row][proposed_col] == "--":   
-                allowed_moves.append([proposed_row, proposed_col])
-            
-            # check if opponents piece
-            elif self.board[proposed_row][proposed_col][0] != rook_color:
-                allowed_moves.append([proposed_row, proposed_col])
-                break
-            else:
-                break
-
-        # check south direction
-        proposed_row = row_index    # default proposed row to the selected rook row
-        proposed_col = col_index    # default proposed col to the selected rook col
-        for _ in range(board_dimensions - row_index - 1):   # make sure on game board
-            proposed_row += 1                               # move south one step
-
-            # check if square is empty : 
-            if self.board[proposed_row][proposed_col] == "--":   
-                allowed_moves.append([proposed_row, proposed_col])
-            
-            # check if opponents piece
-            elif self.board[proposed_row][proposed_col][0] != rook_color:
-                allowed_moves.append([proposed_row, proposed_col])
-                break
-            else:
-                break
-
-        # check east direction
-        proposed_row = row_index    # default proposed row to the selected rook row
-        proposed_col = col_index    # default proposed col to the selected rook col
-        for _ in range(board_dimensions - col_index - 1):   # make sure on game board
-            proposed_col += 1                               # move east one step
-
-            # check if square is empty : 
-            if self.board[proposed_row][proposed_col] == "--":   
-                allowed_moves.append([proposed_row, proposed_col])
-            
-            # check if opponents piece
-            elif self.board[proposed_row][proposed_col][0] != rook_color:
-                allowed_moves.append([proposed_row, proposed_col])
-                break
-            else:
-                break
-
-        # check west direction
-        proposed_row = row_index    # default proposed row to the selected rook row
-        proposed_col = col_index    # default proposed col to the selected rook col
-        for _ in range(col_index):  # make sure on game board
-            proposed_col -= 1       # move west one step
-
-            # check if square is empty : 
-            if self.board[proposed_row][proposed_col] == "--":   
-                allowed_moves.append([proposed_row, proposed_col])
-            
-            # check if opponents piece
-            elif self.board[proposed_row][proposed_col][0] != rook_color:
-                allowed_moves.append([proposed_row, proposed_col])
-                break
-            else:
-                break
-
-        return allowed_moves
-
-    def king_available_moves(self, selected_king, board_dimensions = 8, respect_turn_order = True, **kwargs):
-        """Given a selected king, get available moves on board.
-        selected_pawn = [row, column]
-        Returns  [allowed_moves]
-        TODO make more readable 
+        # four cardinal directions
+        directions = [(-1,0),(1,0),(0,1),(0,-1)]
+        for dr, dc in directions:
+            rr, cc = r + dr, c + dc
+            while 0 <= rr < board_dimensions and 0 <= cc < board_dimensions:
+                target = self.board[rr][cc]
+                if target == "--":
+                    moves.append(self._mk_move((r,c),(rr,cc)))
+                else:
+                    if target[0] != color:
+                        moves.append(self._mk_move((r,c),(rr,cc)))
+                    break
+                rr += dr
+                cc += dc
+        return moves
+       
+    def king_moves(self: "GameState", start: Sq, board_dimensions: int = 8, respect_turn_order: bool = True, **kwargs) -> list[Move]:
         """
-        allowed_moves = []                      # initialize list of allowed_moves to be returned
-        row_index, col_index = selected_king    # get row index and column index of selected king
-        king_color = self.board[row_index][col_index][0] # eg "bK"
+        Generate pseudo-legal king moves from a given square.
 
-        """if the king is not the right color and we are respecting turn order, return nothing"""
-        if king_color != self.player and respect_turn_order:
+        Parameters
+        ----------
+        start : (int, int)
+            King starting square.
+        board_dimensions : int, optional (default=8)
+            Size of the board (assumed square).
+        respect_turn_order : bool, optional (default=True)
+            If True, return no moves unless the king color matches `self.player`.
+            If False, generate moves regardless of whose turn it is.
+
+        Returns
+        -------
+        list[Move]
+            Pseudo-legal king moves to adjacent squares, including captures.
+            Moves are not filtered for king safety.
+
+        Notes
+        -----
+        - Castling is not generated here (to be added later).
+        - Any extra keyword arguments are ignored (present for a uniform dispatcher
+        interface).
+        """
+        r, c = start              # unpack start square
+        piece = self.board[r][c]  # get piece at start square
+        # throw error if piece is not king
+        if piece[1] != "K" and piece != "--":
+            raise ValueError("king_moves called on non-king piece")
+        # if empty square, return no moves
+        if piece == "--":
             return []
-        
-
-        """Check the adjacent squares"""
-        if row_index + 1 < board_dimensions: # on board
-            if self.board[row_index + 1][col_index][0] != king_color: # not your own piece
-                    allowed_moves.append([row_index + 1, col_index])        # South = [1, 0]
-        if row_index - 1 >= 0:              # on board
-            if self.board[row_index - 1][col_index][0] != king_color:          # not your own piece
-                allowed_moves.append([row_index - 1, col_index])        # North = [-1, 0]
-        if col_index + 1 < board_dimensions: # on board
-            if self.board[row_index][col_index + 1][0] != king_color: # not your own piece
-                allowed_moves.append([row_index, col_index + 1])        # East = [0, 1]
-        if col_index - 1 >= 0: # on board
-            if self.board[row_index][col_index - 1][0] != king_color: # not your own piece
-                allowed_moves.append([row_index, col_index - 1])        # West = [0, -1]
-
-        """Check the diagonal entries"""
-        if row_index + 1 < board_dimensions: # on board
-            if col_index + 1 < board_dimensions: # on board
-                if self.board[row_index + 1][col_index + 1][0] != king_color: 
-                    allowed_moves.append([row_index + 1, col_index + 1]) # South-east = [1, 1]
-        if row_index + 1 < board_dimensions: # on board
-            if col_index - 1 >= 0:              # on board
-                if self.board[row_index + 1][col_index - 1][0] != king_color: 
-                    allowed_moves.append([row_index + 1, col_index - 1]) # South-west = [1, -1]
-        if row_index - 1 >= 0:             # on board  
-            if col_index + 1 < board_dimensions: # on board
-                if self.board[row_index - 1][col_index + 1][0] != king_color: 
-                    allowed_moves.append([row_index - 1, col_index + 1]) # North-east = [-1, 1]
-        if row_index - 1 >= 0:  #           on board            
-            if col_index - 1 >= 0:  # on board
-                if self.board[row_index - 1][col_index - 1][0] != king_color: 
-                    allowed_moves.append([row_index - 1, col_index - 1]) # North-west = [-1, -1]
-        return allowed_moves
-        
-    def bishop_available_moves(self, selected_bishop, board_dimensions = 8, respect_turn_order = True, **kwargs):
-        """Given a selected bishop, get available moves on board.
-        selected_bishop = [row, column]
-        Returns  [allowed_moves]
-        """
-        allowed_moves = []
-        row, col = selected_bishop
-        bishop_color = self.board[row][col][0] # eg "wB"
-        """if the bishop is not the right color and we are respecting turn order, return nothing"""
-        if bishop_color != self.player and respect_turn_order:
-            return []
-        
-        new_row = row
-        new_col = col
-
-        # southeast diagonals
-        SE_range = min(board_dimensions - row - 1, 
-                       board_dimensions - col - 1) # check diagonal distance to edge of board
-        new_row = row
-        new_col = col
-        for _ in range(SE_range):   # stay on game board
-            new_row += 1            # move south one step
-            new_col += 1            # move east one step
-
-            # check if square is empty
-            if self.board[new_row][new_col] == "--":   
-                allowed_moves.append([new_row, new_col])
-            
-            # check if opponents piece
-            elif self.board[new_row][new_col][0] != bishop_color:
-                allowed_moves.append([new_row, new_col])
-                break
-            else:
-                break
-
-        # southwest diagonals
-        SW_range = min(board_dimensions - row - 1, col) # check diagonal distance to edge of board
-        new_row = row
-        new_col = col
-        for _ in range(SW_range):   # stay on game board
-            new_row += 1            # move south one step
-            new_col -= 1            # move west one step
-
-            # check if square is empty : 
-            if self.board[new_row][new_col] == "--":   
-                allowed_moves.append([new_row, new_col])
-            
-            # check if opponents piece
-            elif self.board[new_row][new_col][0] != bishop_color:
-                allowed_moves.append([new_row, new_col])
-                break
-            else:
-                break
-
-        # northwest diagonals
-        NW_range = min(row, col) # check diagonal distance to edge of board
-        new_row = row
-        new_col = col
-        for _ in range(NW_range):   # stay on game board
-            new_row -= 1            # move north one step
-            new_col -= 1            # move west one step
-
-            # check if square is empty : 
-            if self.board[new_row][new_col] == "--":   
-                allowed_moves.append([new_row, new_col])
-            
-            # check if opponents piece
-            elif self.board[new_row][new_col][0] != bishop_color:
-                allowed_moves.append([new_row, new_col])
-                break
-            else:
-                break
-
-        # northeast diagonals
-        NE_range = min(row, board_dimensions - col - 1) # check diagonal distance to edge of board
-        new_row = row
-        new_col = col
-        for _ in range(NE_range):   # stay on game board
-            new_row -= 1            # move south one step
-            new_col += 1            # move east one step
-
-            # check if square is empty : 
-            if self.board[new_row][new_col] == "--":   
-                allowed_moves.append([new_row, new_col])
-            
-            # check if opponents piece
-            elif self.board[new_row][new_col][0] != bishop_color:
-                allowed_moves.append([new_row, new_col])
-                break
-            else:
-                break
-        
-        return allowed_moves
-
-    def queen_available_moves(self, selected_queen, **kwargs):
-        """Given a selected queen, get available moves on board.
-        selected_queen = [row, column]
-        Returns  [allowed_moves]
-        """
-        # the allowed moves of a queen are just those of a rook and bishop
-        allowed_moves = self.rook_available_moves(selected_queen, **kwargs)
-        allowed_moves.extend(self.bishop_available_moves(selected_queen, **kwargs))
-        return allowed_moves
-
-    def knight_available_moves(self, selected_knight, board_dimensions = 8, respect_turn_order = True, **kwargs):
-        """Given a selected knight, get available moves on board.
-        selected_knight = [row, column]
-        Returns  [allowed_move[0], ...]
-        """
-        allowed_moves = []
-        row, col = selected_knight
-        knight_color = self.board[row][col][0] # eg "wN"
-
-        """if the knight color does not match the current player, and the turn order is respected, then return nothing"""
-        if knight_color != self.player and respect_turn_order:
+        color = piece[0]  # get color of king
+        # if turn order is respected and king color is not current player, return no moves
+        if respect_turn_order and color != self.player:
             return []
 
-        # create relative jump directions
-        jumps = [[1, 2], [1, -2], [-1, 2], [-1, -2], [2, 1], [2, -1], [-2, 1], [-2, -1]]
+        moves = []
 
-        for jump in jumps:
-            # create new jump coordinate
-            new_row = jump[0] + row
-            new_col = jump[1] + col
+        # all adjacent squares
+        for dr in (-1, 0, 1):
+            for dc in (-1, 0, 1):
+                # skip the square the king is on
+                if dr == 0 and dc == 0:
+                    continue
+                rr, cc = r + dr, c + dc
+                if 0 <= rr < board_dimensions and 0 <= cc < board_dimensions:
+                    target = self.board[rr][cc]
+                    if target == "--" or target[0] != color:
+                        moves.append(self._mk_move((r,c),(rr,cc)))
+        return moves
 
-            # make sure jump is on board
-            if new_row in range(board_dimensions):
-                if new_col in range(board_dimensions):
-                    # allowed squares do not contain your own pieces (or are empty)
-                    if self.board[new_row][new_col][0] != knight_color:
-                        allowed_moves.append([new_row, new_col])
-        return allowed_moves
+    def bishop_moves(self: "GameState", start: Sq, board_dimensions: int = 8, respect_turn_order: bool = True, **kwargs) -> list[Move]:
+        """
+        Generate pseudo-legal bishop moves from a given square.
 
-    def is_available_move(self, move_pair, respect_turn_order = True):
-        """"This function checks if a move from move_pair = [position_0, position_1]
-        position_0 = [row_0, col_0] to position_1 = [row_1, col_1] is available. 
-        Returns True if available move."""
-        row_0, col_0 = move_pair[0]
-        color_selected = self.board[row_0][col_0][0]    # get "w" from "wP" for example
+        Parameters
+        ----------
+        start : (int, int)
+            Bishop starting square.
+        board_dimensions : int, optional (default=8)
+            Size of the board (assumed square).
+        respect_turn_order : bool, optional (default=True)
+            If True, return no moves unless the bishop color matches `self.player`.
+            If False, generate moves regardless of whose turn it is.
 
-        # check if position_0 has a piece 
-        if self.board[row_0][col_0] == "--":
-            return False
+        Returns
+        -------
+        list[Move]
+            Pseudo-legal bishop moves along diagonals (captures included).
+            Moves are not filtered for king safety.
+
+        Notes
+        -----
+        Any extra keyword arguments are ignored (present for a uniform dispatcher
+        interface).
+        """
+        r, c = start              # unpack start square
+        piece = self.board[r][c]  # get piece at start square
+        # throw error if piece is not bishop
+        if piece[1] != "B" and piece != "--":
+            raise ValueError("bishop_moves called on non-bishop piece")
+        # if empty square, return no moves
+        if piece == "--":
+            return []
+        color = piece[0]    # get color of bishop
+        # if turn order is respected and bishop color is not current player, return no moves
+        if respect_turn_order and color != self.player:
+            return []
+
+        moves = []
+
+        # four diagonal directions
+        directions = [(-1,-1),(-1,1),(1,-1),(1,1)]
+        for dr, dc in directions:
+            rr, cc = r + dr, c + dc
+            while 0 <= rr < board_dimensions and 0 <= cc < board_dimensions:
+                target = self.board[rr][cc]
+                if target == "--":
+                    moves.append(self._mk_move((r,c),(rr,cc)))
+                else:
+                    if target[0] != color:
+                        moves.append(self._mk_move((r,c),(rr,cc)))
+                    break
+                rr += dr
+                cc += dc
+        return moves
+
+    def queen_moves(self: "GameState", start: Sq, board_dimensions: int = 8, respect_turn_order: bool = True, **kwargs) -> list[Move]:
+        """
+        Generate pseudo-legal queen moves from a given square.
+
+        Parameters
+        ----------
+        start : (int, int)
+            Queen starting square.
+        board_dimensions : int, optional (default=8)
+            Size of the board (assumed square).
+        respect_turn_order : bool, optional (default=True)
+            If True, return no moves unless the queen color matches `self.player`.
+            If False, generate moves regardless of whose turn it is.
+
+        Returns
+        -------
+        list[Move]
+            Pseudo-legal queen moves (rook-like + bishop-like), including captures.
+            Moves are not filtered for king safety.
+
+        Notes
+        -----
+        Any extra keyword arguments are ignored (present for a uniform dispatcher
+        interface).
+        """
+        r, c = start                # unpack start square
+        piece = self.board[r][c]    # get piece at start square
+
+        # if empty square, return no moves
+        if piece == "--":
+            return []
         
-        # check if color_selected has correct color for turn order
-        if color_selected != self.player and respect_turn_order:  
-                return False
-        
-        # if piece is pawn, check allowed moves
-        if self.board[row_0][col_0][1] == "P":
-            allowed_moves = self.pawn_available_moves(move_pair[0])
-            if move_pair[1] in allowed_moves:
-                return True
-        
-        # if piece is rook, check allowed moves
-        if self.board[row_0][col_0][1] == "R":
-            allowed_moves = self.rook_available_moves(move_pair[0])
-            if move_pair[1] in allowed_moves:
-                return True
-            
-        # if piece is king, check allowed moves
-        if self.board[row_0][col_0][1] == "K":
-            allowed_moves = self.king_available_moves(move_pair[0])
-            if move_pair[1] in allowed_moves:
-                return True
-            
-        # if piece is bishop, check allowed moves
-        if self.board[row_0][col_0][1] == "B":
-            allowed_moves = self.bishop_available_moves(move_pair[0])
-            if move_pair[1] in allowed_moves:
-                return True
-        
-        # if piece is queen, check allowed moves
-        if self.board[row_0][col_0][1] == "Q":
-            allowed_moves = self.queen_available_moves(move_pair[0])
-            if move_pair[1] in allowed_moves:
-                return True
-        
-        # if piece is knight, check allowed moves
-        if self.board[row_0][col_0][1] == "N":
-            allowed_moves = self.knight_available_moves(move_pair[0])
-            if move_pair[1] in allowed_moves:
-                return True
-        
-        else:
-            return False
-     
-    def get_available_moves(self, coord, **kwargs):
-        """Return the available possible moves of the coordinates as a list of coordinates [[row, col], ...]. If the selected_piece is the empty square return []."""
-        FUNCTION_DICT = {"P": "pawn_available_moves", "B": "bishop_available_moves", 
-                         "Q": "queen_available_moves", "R": "rook_available_moves",
-                         "K": "king_available_moves", "N": "knight_available_moves"}
-        valid_moves = []
+        # throw error if piece is not queen
+        if piece[1] != "Q":
+            raise ValueError("queen_moves called on non-queen piece")
+
+        color = piece[0]   # get color of queen
+        # if turn order is respected and queen color is not current player, return no moves
+        if respect_turn_order and color != self.player:
+            return []
+
+        moves = []
+
+        # Rook-like directions
+        rook_dirs = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        for dr, dc in rook_dirs:
+            rr, cc = r + dr, c + dc
+            while 0 <= rr < board_dimensions and 0 <= cc < board_dimensions:
+                target = self.board[rr][cc]
+                if target == "--":
+                    moves.append(self._mk_move((r, c), (rr, cc)))
+                else:
+                    if target[0] != color:
+                        moves.append(self._mk_move((r, c), (rr, cc)))
+                    break
+                rr += dr
+                cc += dc
+
+        # Bishop-like directions
+        bishop_dirs = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
+        for dr, dc in bishop_dirs:
+            rr, cc = r + dr, c + dc
+            while 0 <= rr < board_dimensions and 0 <= cc < board_dimensions:
+                target = self.board[rr][cc]
+                if target == "--":
+                    moves.append(self._mk_move((r, c), (rr, cc)))
+                else:
+                    if target[0] != color:
+                        moves.append(self._mk_move((r, c), (rr, cc)))
+                    break
+                rr += dr
+                cc += dc
+
+        return moves
+
+    def knight_moves(self: "GameState", start: Sq, board_dimensions: int = 8, respect_turn_order: bool = True, **kwargs) -> list[Move]:
+        """
+        Generate pseudo-legal knight moves from a given square.
+
+        Parameters
+        ----------
+        start : (int, int)
+            Knight starting square.
+        board_dimensions : int, optional (default=8)
+            Size of the board (assumed square).
+        respect_turn_order : bool, optional (default=True)
+            If True, return no moves unless the knight color matches `self.player`.
+            If False, generate moves regardless of whose turn it is.
+
+        Returns
+        -------
+        list[Move]
+            Pseudo-legal knight moves (L-jumps), including captures.
+            Moves are not filtered for king safety.
+
+        Notes
+        -----
+        Any extra keyword arguments are ignored (present for a uniform dispatcher
+        interface).
+        """
+        r, c = start                # unpack start square
+        piece = self.board[r][c]    # get piece at start square
+        # throw error if piece is not knight
+        if piece[1] != "N" and piece != "--":
+            raise ValueError("knight_moves called on non-knight piece")
+        # if empty square, return no moves
+        if piece == "--":
+            return []
+        color = piece[0]    # get color of knight
+        # if turn order is respected and knight color is not current player, return no moves
+        if respect_turn_order and color != self.player:
+            return []
+
+        moves = []
+
+        # all possible knight jumps
+        jumps = [(-2,-1),(-2,1),(-1,-2),(-1,2),(1,-2),(1,2),(2,-1),(2,1)]
+        for dr, dc in jumps:
+            rr, cc = r + dr, c + dc
+            if 0 <= rr < board_dimensions and 0 <= cc < board_dimensions:
+                target = self.board[rr][cc]
+                if target == "--" or target[0] != color:
+                    moves.append(self._mk_move((r,c),(rr,cc)))
+        return moves
+
+    def get_available_moves(self: "GameState", coord: Sq, as_moves: bool = True, **kwargs) -> list[Move] | list[UISq]:
+        """
+        Return pseudo-legal moves for the piece located at `coord`.
+
+        Parameters
+        ----------
+        as_moves : bool
+            If True, return Move objects.
+            If False, return destination squares only.
+        """
+        MOVE_FUNCS = {
+            "P": "pawn_moves",
+            "B": "bishop_moves",
+            "Q": "queen_moves",
+            "R": "rook_moves",
+            "K": "king_moves",
+            "N": "knight_moves",
+        }
+
         row, col = coord
-        piece_name = self.board[row][col][1]
-        if piece_name != "-":
-            valid_move_func = getattr(GameState, FUNCTION_DICT[piece_name])
-            valid_moves = valid_move_func(self, coord, **kwargs)
-        return valid_moves
-        
-    def get_all_available_attacks(self, player_color):
-        """return all available attacks of player_color = "b" or "w" """
-        all_valid_attacks = []
-        for row, row_list_string in enumerate(self.board):
-            for col, _ in enumerate(row_list_string):
-                if self.board[row][col][0] == player_color:
-                    all_valid_attacks = all_valid_attacks + \
-                    self.get_available_moves([row, col], respect_turn_order = False, is_attack=True)
-        return all_valid_attacks
-    
-    def get_all_available_moves(self, player_color):
-        """return all available moves of player_color = "b" or "w" """
-        all_valid_moves = []
-        for row, row_list_string in enumerate(self.board):
-            for col, _ in enumerate(row_list_string):
-                if self.board[row][col][0] == player_color:
-                    all_valid_moves = all_valid_moves + \
-                    self.get_available_moves([row, col], respect_turn_order = False, is_attack=False)
-        return all_valid_moves
+        piece = self.board[row][col]
+        if piece == "--":
+            return []
 
-    def is_checked(self, coord, color):
-        """Returns true if if square at coords = [row, col] is being attacked by color."""
-        attack_moves = self.get_all_available_attacks(color)
-        if coord in attack_moves:
-            return True
-        else:
-            return False
-            
-    def get_king_coord(self, color):
-        """Returns coord = [row, col] of king of given color"""
-        king_name = str(color) + "K"
-        for row in range(self.board_dimension):
-            for col in range(self.board_dimension):
-                if self.board[row][col] == king_name:
-                    return [row, col]
-    
-    def get_legal_moves(self, coord):
-        """Legal moves = available moves that do not leave your king in check."""
-        FUNCTION_DICT = {"P": "pawn_available_moves", "B": "bishop_available_moves",
-                        "Q": "queen_available_moves", "R": "rook_available_moves",
-                        "K": "king_available_moves", "N": "knight_available_moves"}
+        func = getattr(GameState, MOVE_FUNCS[piece[1]])
+        moves = func(self, coord, **kwargs)
 
-        legal_moves = []
-        row, col = coord
-        piece_name = self.board[row][col][1]
+        if as_moves:
+            return moves
+        return [list(mv.end) for mv in moves]
+    
+    def iter_piece_squares(self: "GameState", color: str) -> Iterable[Sq]:
+        """
+        Yield coordinates of all pieces of a given color on the board.
+        """
+        for r in range(self.board_dimension):
+            for c in range(self.board_dimension):
+                if self.board[r][c] != "--" and self.board[r][c][0] == color:
+                    yield (r, c)
+
+    def iter_available_moves(self: "GameState", color: str, *, is_attack: bool) -> Iterable[Move]:
+        """
+        Yield pseudo-legal moves for all pieces of a given color.
+
+        Parameters
+        ----------
+        is_attack : bool
+            If True, generate attack maps instead of movement options.
+        """
+        for sq in self.iter_piece_squares(color):
+            # respect_turn_order=False because we are explicitly choosing the color
+            for mv in self.get_available_moves(sq,
+                                            respect_turn_order=False,
+                                            is_attack=is_attack,
+                                            as_moves=True):
+                yield mv
+
+    def get_all_available(self: "GameState", color: str, is_attack: bool, as_moves: bool = True) -> list[Move] | list[UISq]:
+        """
+        Return all squares or moves available to a given color.
+
+        Parameters
+        ----------
+        color : str
+            Either "w" or "b", the color whose moves or attacks are requested.
+
+        is_attack : bool
+            If True, return the attack map for this color (used for check detection).
+            If False, return pseudo-legal move destinations.
+
+        as_moves : bool, optional (default=True)
+            If True, return a list of Move objects.
+            If False, return a list of destination squares as [row, col].
+
+        Returns
+        -------
+        list
+            Either:
+            - List[Move] if as_moves=True
+            - List[[row, col]] if as_moves=False
+        """
+
+        # Generate all pseudo-legal Move objects for this color
+        # respect_turn_order=False because the color is explicitly specified
+        moves = list(
+            self.iter_available_moves(color, is_attack=is_attack)
+        )
+
+        # If Move objects are requested, return them directly
+        if as_moves:
+            return moves
+
+        # Otherwise, project down to destination squares for UI / legacy code
+        return [list(mv.end) for mv in moves]
+
+    def is_checked(self: "GameState", king_coord: Sq, attacker_color: str) -> bool:
+        """
+        Determine whether a king is in check.
+
+        Returns True if the square `king_coord` is attacked by `attacker_color`.
+        """
+        king_sq = tuple(king_coord)
+        for mv in self.iter_available_moves(attacker_color, is_attack=True):
+            if mv.end == king_sq:
+                return True
+        return False
+
+    def get_king_coord(self: "GameState", color: str) -> Optional[Sq]:
+        """
+        Return the coordinates of the king of the specified color.
+
+        Returns None if the king is not found.
+        """
+        king_name = f"{color}K"
+        for r in range(self.board_dimension):
+            for c in range(self.board_dimension):
+                if self.board[r][c] == king_name:
+                    return (r, c)
+        return None  # (optional) explicit failure case
+
+    def get_legal_moves(self: "GameState", coord: Sq, as_moves: bool = True, respect_turn_order: bool = True) -> list[Move] | list[UISq]:
+        """
+        Return fully legal moves for the piece at `coord`.
+
+        This method starts from pseudo-legal moves (piece motion + occupancy) and
+        filters them by simulating each move and rejecting any move that leaves
+        the moving side's king in check.
+
+        Parameters
+        ----------
+        coord : (int, int)
+            Coordinates of the piece to move.
+        as_moves : bool, optional (default=True)
+            If True, return a list of `Move` objects.
+            If False, return a list of destination squares as [row, col] (UI-friendly).
+        respect_turn_order : bool, optional (default=True)
+            If True, only generate moves if the piece color matches `self.player`.
+            If False, generate legal moves for the piece regardless of whose turn it is.
+
+        Returns
+        -------
+        list
+            Either:
+            - list[Move] if as_moves=True
+            - list[[row, col]] if as_moves=False
+        """
         mover_color = self.player
+        available = self.get_available_moves(coord,
+                                            respect_turn_order=respect_turn_order,
+                                            is_attack=False,
+                                            as_moves=True)
 
-        if piece_name == "-":
-            return []
-        piece_available_move_func = getattr(GameState, FUNCTION_DICT[piece_name])
+        legal = []
+        for mv in available:
+            self.make_move(mv)
+            attacker = self.player  # after make_move, self.player switched
+            our_king = self.get_king_coord(mover_color)
+            if not self.is_checked(our_king, attacker):
+                legal.append(mv)
+            self.undo_last_move()
+        if as_moves:
+            return legal
+        else: 
+            return [list(mv.end) for mv in legal]
 
-        # candidate moves (pseudo-legal)
-        available_moves = piece_available_move_func(self, coord, respect_turn_order=False, is_attack=False)
-        legal_moves = list(available_moves)
+    def is_legal_move(self: "GameState", move_pair: Tuple[UISq, UISq]) -> bool:
+        """
+        Determine whether a given move is legal for the current player.
 
-        for move in available_moves:
-            copy_player = deepcopy(self)
-            copy_player.move_piece([coord, move])
+        Parameters
+        ----------
+        move_pair : Tuple[UISq, UISq]
+            A tuple containing the start and end coordinates of the move.
 
-            # after move_piece, copy_player.player is now the opponent to move
-            attacker_color = copy_player.player  # the side that would attack our king
-            our_king = copy_player.get_king_coord(color=mover_color)
+        Returns
+        -------
+        bool
+            True if the move is legal, False otherwise.
+        """
+        start_ui, end_ui = move_pair
+        start: Sq = tuple(start_ui)
+        end: Sq = tuple(end_ui)
 
-            opponent_attacks = copy_player.get_all_available_attacks(attacker_color)
+        for mv in self.get_legal_moves(start):
+            if mv.end == end:
+                return True
+        return False
 
-            # illegal if our king is attacked
-            if our_king in opponent_attacks:
-                if move in legal_moves:
-                    legal_moves.remove(move)
+    def get_all_legal_moves(self: "GameState", color: str, as_moves: bool = True) -> list[Move] | list[UISq]:
+        """
+        Return all legal moves for `color`.
 
-        return legal_moves
+        Parameters
+        ----------
+        color : str
+            "w" or "b"
+        as_moves : bool
+            If True, return List[Move].
+            If False, return List[[row, col]] of destination squares (UI-friendly).
 
-
-    def is_legal_move(self, move_pair):
-        """Returns true if move pair is valid move. move_pair[0] = initial"""
-        legal_moves = self.get_legal_moves(move_pair[0])
-        if move_pair[1] in legal_moves:
-            return True
-        else:
-            return False
-    
-    def get_all_legal_moves(self, player_color):
-        """returns all legal move coordinates of player_color"""
-        all_legal_moves = []
+        Notes
+        -----
+        This function temporarily sets self.player = color so that the existing
+        per-piece legality routines (which depend on self.player) work correctly.
+        The original player is restored before returning.
+        """
         saved_player = self.player
-        self.player = player_color
+        self.player = color
         try:
-            for row, row_list_string in enumerate(self.board):
-                for col, _ in enumerate(row_list_string):
-                    if self.board[row][col][0] == player_color:
-                        all_legal_moves += self.get_legal_moves([row, col])
+            all_moves = []
+
+            # Iterate over all pieces of this color and collect their legal moves
+            for sq in self.iter_piece_squares(color):
+                # IMPORTANT: use the Move-native function here
+                all_moves.extend(self.get_legal_moves(sq, respect_turn_order=False))
+
+            if as_moves:
+                return all_moves
+
+            # UI / legacy: return just destination squares
+            return [list(mv.end) for mv in all_moves]
+
         finally:
             self.player = saved_player
-        return all_legal_moves
 
-    def is_checkmate(self):
-        """Return true if current board position is checkmate"""
-        total_legal_moves = len(self.get_all_legal_moves(self.player))
+    def is_checkmate(self: "GameState") -> bool:
+        """True iff current player has no legal moves and is in check."""
+        total_legal = len(self.get_all_legal_moves(self.player))
         king_coord = self.get_king_coord(self.player)
-        is_check = self.is_checked(king_coord, self.opponent_color())
-        if total_legal_moves == 0 and is_check:
-            return True
-        else:
-            return False
+        in_check = self.is_checked(king_coord, self.opponent_color())
+        return total_legal == 0 and in_check
 
-    def is_stalemate(self):
-        """Checks in history to determine if current position is stalemate."""
-        total_legal_moves = len(self.get_all_legal_moves(self.player))
-        if total_legal_moves == 0:
-            return True
-        else:
-            return False
+    def is_stalemate(self: "GameState") -> bool:
+        """True iff current player has no legal moves and is not in check."""
+        total_legal = len(self.get_all_legal_moves(self.player))
+        king_coord = self.get_king_coord(self.player)
+        in_check = self.is_checked(king_coord, self.opponent_color())
+        return total_legal == 0 and not in_check
 

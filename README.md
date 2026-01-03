@@ -30,11 +30,19 @@ and then to run the program
   - Allow capture only on the immediately following move
   - Ensure en passant does not expose own king to check
 
-- [ ] **Correct undo functionality**
+- [ ] **Add promotion**
+  - Default to queen promotion
+  - UI: Popup with prompt for string input "Q,N,B,R,".
+
+- [!] **Correct undo functionality**
   - Store captured piece in move log
   - Restore board state exactly on undo
   - Prepare undo logic for future MCTS/search (no deepcopies)
 
+- [ ] **Finite game checks (beyond stalemate)**
+  - 50 move rule
+  - Threefold repetition
+  - Insufficient material
 ---
 
 ### Game State & Feedback
@@ -42,7 +50,7 @@ and then to run the program
   - Use attack-map logic (not legal moves)
   - Update after every move
 
-- [ ] **Highlight capture moves**
+- [!] **Highlight capture moves**
   - Display available capture moves in a distinct color (e.g. red)
   - Non-capture moves remain current highlight color
   - Use `is_attack=False` move generation + board inspection
@@ -50,7 +58,7 @@ and then to run the program
 ---
 
 ### UI / Interaction
-- [ ] **Add undo button**
+- [!] **Add undo button**
   - Revert last move using corrected undo logic
   - Sync board, player, and move history
 
