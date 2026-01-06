@@ -13,14 +13,11 @@ Sq = Tuple[int, int]
 # UI / legacy square coordinates (row, col) as a list
 UISq = list[int]
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class Move:
     """
-    Immutable description of a single chess move.
-
-    Stores start and end squares, moved and captured pieces, and
-    additional metadata needed to represent and undo special moves
-    such as en passant and castling.
+    Immutable, hashable chess move descriptor (safe as dict keys for MCTS).
+    Undo snapshots do NOT live here.
     """
     start: Sq
     end: Sq
@@ -35,9 +32,18 @@ class Move:
     rook_start: Optional[Sq] = None
     rook_end: Optional[Sq] = None
 
-    # state snapshots for undo
-    prev_en_passant_target: Optional[Sq] = None
-    prev_castling_rights: Optional[Dict[str, bool]] = None
+    # optional (for later)
+    promotion: str = ""
+
+
+@dataclass(slots=True)
+class UndoRecord:
+    """
+    Undo information for a move. Can contain dicts/lists; does not need to be hashable.
+    """
+    mv: Move
+    prev_en_passant_target: Optional[Sq]
+    prev_castling_rights: Optional[Dict[str, bool]]
 
 class GameState():
     """
@@ -216,18 +222,23 @@ class GameState():
         piece_captured = self.board[r1][c1]
         return Move(start=(r0, c0), end=(r1, c1), piece_moved=piece_moved, piece_captured=piece_captured)
 
-    def make_move(self: "GameState", mv: Move) -> None:
+    def make_move(self: "GameState", mv: Move, *, record_legacy_history: bool = False) -> None:
         """
         Apply a Move to the board and update game state.
 
-        Records sufficient information inside the Move object to allow
-        the operation to be undone later.
+        Stores undo information in GameState (not inside Move),
+        so Move can remain immutable/hashable for MCTS.
         """
-        # snapshot state (for future en passant / castling)
-        mv.prev_en_passant_target = getattr(self, "en_passant_target", None)
-        mv.prev_castling_rights = getattr(self, "castling_rights", None)
-        if isinstance(mv.prev_castling_rights, dict):
-            mv.prev_castling_rights = mv.prev_castling_rights.copy()
+        # --- snapshot state for undo ---
+        prev_ep = getattr(self, "en_passant_target", None)
+        prev_cr = getattr(self, "castling_rights", None)
+        if isinstance(prev_cr, dict):
+            prev_cr = prev_cr.copy()
+
+        # initialize undo stack if needed
+        if not hasattr(self, "undo_stack"):
+            self.undo_stack = []
+        self.undo_stack.append(UndoRecord(mv=mv, prev_en_passant_target=prev_ep, prev_castling_rights=prev_cr))
 
         (r0, c0), (r1, c1) = mv.start, mv.end
 
@@ -235,13 +246,12 @@ class GameState():
         self.board[r0][c0] = "--"
         self.board[r1][c1] = mv.piece_moved
 
-        # (special moves later)
-
         # log move
         self.move_log.append(mv)
 
-        # legacy history (keep for now so nothing else breaks)
-        self.history.append(deepcopy(self.board))
+        # legacy history (expensive) — skip during MCTS
+        if record_legacy_history:
+            self.history.append(deepcopy(self.board))
 
         # advance turn
         self.turn += 1
@@ -261,7 +271,7 @@ class GameState():
             piece_captured=self.board[r1][c1],
         )
 
-    def undo_last_move(self: "GameState") -> None:
+    def undo_last_move(self: "GameState", *, record_legacy_history: bool = False) -> None:
         """
         Undo the most recently executed move.
 
@@ -282,15 +292,16 @@ class GameState():
         self.board[r0][c0] = mv.piece_moved
         self.board[r1][c1] = mv.piece_captured
 
-        # restore state snapshots
-        if hasattr(self, "en_passant_target"):
-            self.en_passant_target = mv.prev_en_passant_target
-        if hasattr(self, "castling_rights") and mv.prev_castling_rights is not None:
-            self.castling_rights = mv.prev_castling_rights
+        # restore state snapshots from undo stack
+        if hasattr(self, "undo_stack") and self.undo_stack:
+            rec = self.undo_stack.pop()
+            if hasattr(self, "en_passant_target"):
+                self.en_passant_target = rec.prev_en_passant_target
+            if hasattr(self, "castling_rights") and rec.prev_castling_rights is not None:
+                self.castling_rights = rec.prev_castling_rights
 
-        # legacy history (keep consistent)
-        if self.history:
-            self.history.pop()
+            if record_legacy_history and self.history:
+                self.history.pop()
 
     def opponent_color(self: "GameState") -> str:
         """

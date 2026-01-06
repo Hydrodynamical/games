@@ -16,6 +16,48 @@ and then to run the program
 
 `python main.py`
 
+## Reproducible Python Environments
+
+This repo intentionally does **not** commit virtual environment folders (they are ignored via `.gitignore`).
+Instead, it tracks **lock files** generated from each virtual environment so you can recreate them deterministically.
+
+Currently there are two environments:
+
+- **Python 3.12** (For ML): `requirements/requirements-py312.lock.txt`
+- **Python 3.15 (alpha)** (For UI): `requirements/requirements-py315.lock.txt`
+
+### Create + Install (Python 3.12 for ML)
+
+```bash
+cd /Users/jkmiller/games
+python3.12 -m venv .venv312
+./.venv312/bin/python -m pip install -U pip
+./.venv312/bin/python -m pip install -r requirements/requirements-py312.lock.txt
+```
+
+### Create + Install (Python 3.15 alpha / experimental for UI)
+
+Only use this if you already have a Python 3.15 alpha installed locally.
+
+```bash
+cd /Users/jkmiller/games
+python3.15 -m venv .venv
+./.venv/bin/python -m pip install -U pip
+./.venv/bin/python -m pip install -r requirements/requirements-py315.lock.txt
+```
+
+### Updating the Lock Files
+
+When you change dependencies inside an environment, regenerate its lock file:
+
+```bash
+cd /Users/jkmiller/games
+./.venv312/bin/python -m pip freeze --exclude-editable | sort > requirements/requirements-py312.lock.txt
+./.venv/bin/python -m pip freeze --exclude-editable | sort > requirements/requirements-py315.lock.txt
+```
+
+Commit the updated files under `requirements/` and push to GitHub.
+
 
 ## Next Iteration TODO
 
