@@ -26,7 +26,8 @@ def main():
         game_data, result = play_self_game(
             gs,
             model,
-            num_mcts_sims=700,
+            num_mcts_sims=500,
+            max_moves=500,
             temperature=3.0,
         )
 

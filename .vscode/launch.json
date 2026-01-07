@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+
+    {
+      "name": "Run self_play (py312)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/chess/scr/main.py",
+      "console": "integratedTerminal",
+      "python": "${workspaceFolder}/.venv312/bin/python3"
+    },
+    {
+      "name": "Run UI (py315)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/chess/main.py",
+      "console": "integratedTerminal",
+      "python": "${workspaceFolder}/.venv/bin/python"
+    }
+  ]
+}

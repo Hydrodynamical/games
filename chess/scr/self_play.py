@@ -1,9 +1,8 @@
 # https://chatgpt.com/share/695c85a9-4ed4-8006-83ab-d4bbc3e7b500
 # self_play.py
-from __future__ import annotations
-
 from typing import List, Tuple
 from copy import deepcopy
+from tqdm import trange
 import torch
 
 # from chess_engine import GameState, Move
@@ -32,7 +31,7 @@ def play_self_game(
     data = []
     gs = deepcopy(gs)
 
-    for _ in range(max_moves):
+    for _ in trange(max_moves):
         # MCTS → improved policy
         pi_moves = mcts_search(gs, model, num_sims=num_mcts_sims, show_progress=True)
 
