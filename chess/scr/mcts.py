@@ -95,8 +95,15 @@ def mcts_search(
 
         # Evaluation / Expansion
         if node.is_terminal():
-            # crude terminal value: current player has no legal moves => losing-ish
-            v = -1.0
+            # side to move has no legal moves
+            if hasattr(node.gs, "is_checkmate") and node.gs.is_checkmate():
+                v = -1.0
+            elif hasattr(node.gs, "is_stalemate") and node.gs.is_stalemate():
+                v = 0.0
+            else:
+                # fallback: treat as draw if unsure
+                v = 0.0
+
         else:
             node.expand(model)
             v = critic_value(model, node.gs)

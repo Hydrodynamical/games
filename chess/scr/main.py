@@ -26,9 +26,9 @@ def main():
         game_data, result = play_self_game(
             gs,
             model,
-            num_mcts_sims=500,
-            max_moves=500,
-            temperature=3.0,
+            num_mcts_sims=200,
+            max_moves=100,
+            temperature=1.0,
         )
 
         # Assign z values
