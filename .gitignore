@@ -1,2 +1,3 @@
 .venv*/
 chess/scr/__pycache__/
+chess/scr/*.pt

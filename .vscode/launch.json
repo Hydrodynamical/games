@@ -1,9 +1,25 @@
 {
   "version": "0.2.0",
   "configurations": [
+    {
+      "name": "Mac: python Debugger: Current File",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "python": "${workspaceFolder}/.venv312/bin/python3"
+    },
+    {
+      "name": "Mac: run UI with AI (py312)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/chess/UI_with_AI.py",
+      "console": "integratedTerminal",
+      "python": "${workspaceFolder}/.venv312/bin/python3"
+    },
 
     {
-      "name": "Run self_play (py312)",
+      "name": "Mac: run scr/main.py (py312)",
       "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/chess/scr/main.py",
@@ -11,7 +27,7 @@
       "python": "${workspaceFolder}/.venv312/bin/python3"
     },
     {
-      "name": "Run UI (py315)",
+      "name": "Mac: run UI (py315)",
       "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/chess/main.py",

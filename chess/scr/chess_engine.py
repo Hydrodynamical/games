@@ -220,7 +220,35 @@ class GameState():
         (r0, c0), (r1, c1) = move_pair
         piece_moved = self.board[r0][c0]
         piece_captured = self.board[r1][c1]
-        return Move(start=(r0, c0), end=(r1, c1), piece_moved=piece_moved, piece_captured=piece_captured)
+
+        # detect castling when UI provides only (start,end)
+        is_castle = False
+        rook_start = None
+        rook_end = None
+
+        # Castling is a king move two files horizontally from the home file (e-file).
+        if piece_moved.endswith("K") and r0 == r1 and abs(c1 - c0) == 2:
+            # king-side: e->g, queen-side: e->c
+            if c1 == 6:
+                is_castle = True
+                rook_start = (r0, 7)
+                rook_end = (r0, 5)
+                piece_captured = "--"  # destination square must be empty for castling
+            elif c1 == 2:
+                is_castle = True
+                rook_start = (r0, 0)
+                rook_end = (r0, 3)
+                piece_captured = "--"
+
+        return Move(
+            start=(r0, c0),
+            end=(r1, c1),
+            piece_moved=piece_moved,
+            piece_captured=piece_captured,
+            is_castle=is_castle,
+            rook_start=rook_start,
+            rook_end=rook_end,
+        )
 
     def make_move(self: "GameState", mv: Move, *, record_legacy_history: bool = False) -> None:
         """
@@ -245,6 +273,56 @@ class GameState():
         # apply move on board (basic)
         self.board[r0][c0] = "--"
         self.board[r1][c1] = mv.piece_moved
+
+        # --- castling: move the rook too ---
+        if mv.is_castle and mv.rook_start is not None and mv.rook_end is not None:
+            rr0, cc0 = mv.rook_start
+            rr1, cc1 = mv.rook_end
+            rook_piece = self.board[rr0][cc0]
+            self.board[rr0][cc0] = "--"
+            self.board[rr1][cc1] = rook_piece
+
+        # --- promotion: auto-queen on back rank ---
+        if mv.piece_moved[1] == "P":
+            promo_row = 0 if mv.piece_moved[0] == "w" else 7
+            if r1 == promo_row:
+                self.board[r1][c1] = mv.piece_moved[0] + "Q"
+
+        # --- update castling rights ---
+        if hasattr(self, "castling_rights") and isinstance(self.castling_rights, dict):
+            mover_color = mv.piece_moved[0]
+            enemy_color = "b" if mover_color == "w" else "w"
+
+            # king moved => loses both castling rights
+            if mv.piece_moved[1] == "K":
+                self.castling_rights[mover_color + "K"] = False
+                self.castling_rights[mover_color + "Q"] = False
+
+            # rook moved from its home square => loses that side
+            if mv.piece_moved[1] == "R":
+                if mover_color == "w":
+                    if mv.start == (7, 0):
+                        self.castling_rights["wQ"] = False
+                    elif mv.start == (7, 7):
+                        self.castling_rights["wK"] = False
+                else:
+                    if mv.start == (0, 0):
+                        self.castling_rights["bQ"] = False
+                    elif mv.start == (0, 7):
+                        self.castling_rights["bK"] = False
+
+            # rook captured on its home square => captured side loses that side
+            if mv.piece_captured.endswith("R"):
+                if enemy_color == "w":
+                    if mv.end == (7, 0):
+                        self.castling_rights["wQ"] = False
+                    elif mv.end == (7, 7):
+                        self.castling_rights["wK"] = False
+                else:
+                    if mv.end == (0, 0):
+                        self.castling_rights["bQ"] = False
+                    elif mv.end == (0, 7):
+                        self.castling_rights["bK"] = False
 
         # log move
         self.move_log.append(mv)
@@ -291,6 +369,14 @@ class GameState():
         # undo board
         self.board[r0][c0] = mv.piece_moved
         self.board[r1][c1] = mv.piece_captured
+
+        # undo castling rook move
+        if mv.is_castle and mv.rook_start is not None and mv.rook_end is not None:
+            rr0, cc0 = mv.rook_start
+            rr1, cc1 = mv.rook_end
+            rook_piece = self.board[rr1][cc1]
+            self.board[rr1][cc1] = "--"
+            self.board[rr0][cc0] = rook_piece
 
         # restore state snapshots from undo stack
         if hasattr(self, "undo_stack") and self.undo_stack:
@@ -508,6 +594,8 @@ class GameState():
 
         moves = []
 
+        is_attack = bool(kwargs.get("is_attack", False))
+
         # all adjacent squares
         for dr in (-1, 0, 1):
             for dc in (-1, 0, 1):
@@ -519,6 +607,62 @@ class GameState():
                     target = self.board[rr][cc]
                     if target == "--" or target[0] != color:
                         moves.append(self._mk_move((r,c),(rr,cc)))
+
+        # castling (only when generating moves, not attacks)
+        if not is_attack and hasattr(self, "castling_rights"):
+            enemy = "b" if color == "w" else "w"
+
+            # only from the home square
+            if (color == "w" and (r, c) == (7, 4)) or (color == "b" and (r, c) == (0, 4)):
+
+                # king-side: e1->g1 / e8->g8, rook h-file -> f-file
+                key_k = color + "K"
+                if self.castling_rights.get(key_k, False):
+                    row = 7 if color == "w" else 0
+                    if self.board[row][5] == "--" and self.board[row][6] == "--" and self.board[row][7] == color + "R":
+                        if (
+                            not self.is_checked((row, 4), enemy)
+                            and not self.is_checked((row, 5), enemy)
+                            and not self.is_checked((row, 6), enemy)
+                        ):
+                            moves.append(
+                                Move(
+                                    start=(row, 4),
+                                    end=(row, 6),
+                                    piece_moved=color + "K",
+                                    piece_captured="--",
+                                    is_castle=True,
+                                    rook_start=(row, 7),
+                                    rook_end=(row, 5),
+                                )
+                            )
+
+                # queen-side: e1->c1 / e8->c8, rook a-file -> d-file
+                key_q = color + "Q"
+                if self.castling_rights.get(key_q, False):
+                    row = 7 if color == "w" else 0
+                    if (
+                        self.board[row][1] == "--"
+                        and self.board[row][2] == "--"
+                        and self.board[row][3] == "--"
+                        and self.board[row][0] == color + "R"
+                    ):
+                        if (
+                            not self.is_checked((row, 4), enemy)
+                            and not self.is_checked((row, 3), enemy)
+                            and not self.is_checked((row, 2), enemy)
+                        ):
+                            moves.append(
+                                Move(
+                                    start=(row, 4),
+                                    end=(row, 2),
+                                    piece_moved=color + "K",
+                                    piece_captured="--",
+                                    is_castle=True,
+                                    rook_start=(row, 0),
+                                    rook_end=(row, 3),
+                                )
+                            )
         return moves
 
     def bishop_moves(self: "GameState", start: Sq, board_dimensions: int = 8, respect_turn_order: bool = True, **kwargs) -> list[Move]:

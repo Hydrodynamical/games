@@ -2,7 +2,7 @@
 # self_play.py
 from typing import List, Tuple
 from copy import deepcopy
-from tqdm import trange
+from tqdm import trange, tqdm
 import torch
 
 # from chess_engine import GameState, Move
@@ -11,15 +11,20 @@ from rl_interface import (
     move_to_action,
     NUM_ACTIONS,
 )
-from mcts import mcts_search
+from mcts import mcts_search, MCTSDiagnostics
 
 
 def play_self_game(
     gs,
     model,
-    num_mcts_sims: int = 200,
-    temperature: float = 1.0,
+    num_mcts_sims: int = 30,
+    temperature: float = 2,
     max_moves: int = 200,
+    trunc_draw_penalty: float = 0.2, # penalty for truncated games, positive
+    diagnostics_per_ply: bool = False,
+    add_root_dirichlet: bool = True,
+    dir_alpha: float = 0.3,
+    dir_epsilon: float = 0.25
 ):
     """
     Play one self-play game using MCTS.
@@ -31,10 +36,24 @@ def play_self_game(
     data = []
     gs = deepcopy(gs)
 
-    for _ in trange(max_moves):
+    # Play until termination or max_moves
+    for ply in trange(max_moves,desc="Self-Play Game", leave=False):
         # MCTS → improved policy
-        pi_moves = mcts_search(gs, model, num_sims=num_mcts_sims, show_progress=True)
-
+        if diagnostics_per_ply:
+            per_move = MCTSDiagnostics()
+        else:
+            per_move = None
+        pi_moves = mcts_search(
+            gs, 
+            model, 
+            num_sims=num_mcts_sims, 
+            show_progress=True, 
+            diagnostics = per_move,
+            add_root_dirichlet=add_root_dirichlet,
+            dir_alpha=dir_alpha,
+            dir_epsilon=dir_epsilon
+            )
+        
         # Build full π vector in 4096 action space
         pi = torch.zeros(NUM_ACTIONS)
         for mv, p in pi_moves.items():
@@ -55,6 +74,11 @@ def play_self_game(
         # Play the move (this should also switch gs.player internally)
         gs.make_move(mv)
 
+        if hasattr(gs, "in_check"):
+            # ensure current player's king is not left in check (illegal position)
+            assert not gs.in_check(gs.player), f"Illegal position: {gs.player} is in check after move {mv}"
+
+
         # After make_move, gs.player is the opponent of the player who just moved.
         # If gs.player is checkmated, the winner is the other side.
         if gs.is_checkmate():
@@ -69,16 +93,7 @@ def play_self_game(
             print(f"Last move: {mv}")
             return data, 0
 
-        # Optional: if you still want this “no moves” guard (redundant if is_checkmate/is_stalemate is correct)
-        legal = gs.get_all_legal_moves(gs.player, as_moves=True)
-        if not legal:
-            # If your checkmate/stalemate functions are correct, one of them should have triggered above.
-            # Treat as draw fallback.
-            print("\n=== NO LEGAL MOVES (fallback) ===")
-            print(f"Last move: {mv}")
-            return data, 0
-
     # If we hit max_moves without termination, treat as draw by truncation
     print("\n=== TRUNCATION DRAW ===")
     print(f"Reached max_moves={max_moves} without checkmate/stalemate.")
-    return data, 0
+    return data, -trunc_draw_penalty
