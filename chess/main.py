@@ -119,7 +119,7 @@ def find_coords(event):
             break #break out of loop if clicked canvas is not in row
     return [row_index, col_index]
 
-def update_text_info(game, show_board_string = False, checkmate = False, stalemate = False):
+def update_text_info(game, show_board_string = False, checkmate = False, stalemate = False, draw_reason = None):
     """Update the text information about the game in text_box label"""
     row_str_len = len(str(["bR", "bN", "bB", "bQ", "bK", "bB", "bN", "bR"]))
     info_text = "Current player is: " + game.player
@@ -136,6 +136,16 @@ def update_text_info(game, show_board_string = False, checkmate = False, stalema
         for _ in range(row_str_len):
             info_text = info_text + "="
         info_text = info_text + "\n"
+
+     # Terminal messages (draw > checkmate > stalemate)
+    if draw_reason:
+        info_text += "\nDraw!\n\n"
+        if draw_reason == "threefold_repetition":
+            info_text += "Reason: Threefold repetition.\n"
+        elif draw_reason == "fifty_move_rule":
+            info_text += "Reason: 50-move rule.\n"
+        else:
+            info_text += f"Reason: {draw_reason}\n"
 
     # if checkmate occurs print message
     if checkmate:
@@ -176,6 +186,16 @@ def reset_background(board_dimension = 8):
             else:
                 canvas_grid[row][col].config(bg = "#d88c44")
 
+def get_draw_reason(game):
+    """Return draw reason string or None."""
+    if hasattr(game, "draw_reason"):
+        return game.draw_reason()
+    if hasattr(game, "is_draw") and game.is_draw():
+        # fallback if you only implemented is_draw() without draw_reason()
+        return "draw"
+    return None
+
+
 def on_left_click(event):
     """This function tells the GUI what to do with left clicks
     It includes the logic to handle clicking the board to move pieces"""
@@ -194,7 +214,12 @@ def on_left_click(event):
             game.make_move(mv)                                  # make the move in the game state
             clear_photos(two_click_history_L)                   # clear the images from canvas_grid
             draw_pieces(board=game.board)                       # draw new positions on canvas_grid
-            update_text_info(game, checkmate=game.is_checkmate(), stalemate=game.is_stalemate())    # update text info about the game
+            draw_reason = get_draw_reason(game)
+            update_text_info(game,                              # update text info about the game
+                checkmate=(not draw_reason and game.is_checkmate()),
+                stalemate=(not draw_reason and game.is_stalemate()),
+                draw_reason=draw_reason,
+            )
         reset_border(two_click_history_L[0])                    # reset border even if move isn't valid
         reset_background()                                      # reset the background of all squares
         two_click_history_L.clear()                             # clear click history after two clicks
@@ -226,7 +251,13 @@ def undo_move(event=None):
     game.undo_last_move()
     reset_background()
     draw_pieces(board=game.board)
-    update_text_info(game, checkmate=game.is_checkmate(), stalemate=game.is_stalemate())
+    draw_reason = get_draw_reason(game)
+    update_text_info(game,
+        checkmate=(not draw_reason and game.is_checkmate()),
+        stalemate=(not draw_reason and game.is_stalemate()),
+        draw_reason=draw_reason,
+    )
+
 
 root.bind("<u>", undo_move)             # press 'u' to undo
 root.bind("<BackSpace>", undo_move)  # press 'Backspace' to undo

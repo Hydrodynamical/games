@@ -33,6 +33,39 @@
       "program": "${workspaceFolder}/chess/main.py",
       "console": "integratedTerminal",
       "python": "${workspaceFolder}/.venv/bin/python"
+    },
+    {
+      "name": "Win: python Debugger: Current File",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "python": "${workspaceFolder}/.venv312/scripts/python"
+    },
+    {
+      "name": "Win: run UI with AI (py312)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/chess/UI_with_AI.py",
+      "console": "integratedTerminal",
+      "python": "${workspaceFolder}/.venv312/scripts/python"
+    },
+
+    {
+      "name": "Win: run scr/main.py (py312)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/chess/scr/main.py",
+      "console": "integratedTerminal",
+      "python": "${workspaceFolder}/.venv312/scripts/python"
+    },
+    {
+      "name": "Win: run UI (py315)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/chess/main.py",
+      "console": "integratedTerminal",
+      "python": "${workspaceFolder}/.venv/scripts/python"
     }
   ]
 }

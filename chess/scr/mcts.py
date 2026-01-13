@@ -88,9 +88,13 @@ class Node:
         self.is_expanded = True
 
     def is_terminal(self) -> bool:
-        # simple terminal: no legal moves
+        # draw by repetition / 50-move
+        if hasattr(self.gs, "is_draw") and self.gs.is_draw():
+            return True
+        # checkmate/stalemate fall out of "no legal moves"
         moves = self.gs.get_all_legal_moves(self.gs.player, as_moves=True)
         return len(moves) == 0
+
 
 
 def ucb_score(parent_visits: int, edge: EdgeStats, c_puct: float) -> float:
@@ -154,6 +158,10 @@ def mcts_search(
 
         # Evaluation / Expansion
         if node.is_terminal():
+            # draw (repetition / 50-move)
+            if hasattr(node.gs, "is_draw") and node.gs.is_draw():
+                local.terminal_other += 1
+                v = 0.0
             # checkmate
             if hasattr(node.gs, "is_checkmate") and node.gs.is_checkmate():
                 local.terminal_checkmate += 1

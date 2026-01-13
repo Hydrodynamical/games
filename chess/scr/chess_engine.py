@@ -44,6 +44,7 @@ class UndoRecord:
     mv: Move
     prev_en_passant_target: Optional[Sq]
     prev_castling_rights: Optional[Dict[str, bool]]
+    prev_halfmove_clock: int  # NEW
 
 class GameState():
     """
@@ -125,6 +126,14 @@ class GameState():
         # easy access for board dimension 
         self.board_dimension = 8
 
+        # NEW: draw bookkeeping
+        self.halfmove_clock: int = 0                # plies since last pawn move or capture
+        self.position_counts: Dict[tuple, int] = {} # key -> count
+        self._pos_stack: list[tuple] = []           # stack of keys for undo
+
+        # Record initial position once
+        self._record_position()
+
     def print_board(self: "GameState", board_dimensions: int = 8) -> None:
         """
         Print the current board position, active player, and turn number in a human-readable format.
@@ -182,6 +191,74 @@ class GameState():
             )
         # print aesthetic divider
         print("\n" + "=" * 48)
+
+    # ----------------------------
+    # Draw detection helpers
+    # ----------------------------
+    def position_key(self) -> tuple:
+        """
+        Hashable representation of the current position for repetition detection.
+
+        Includes:
+          - board placement
+          - side to move
+          - castling rights
+          - en passant target
+        """
+        board_tuple = tuple(tuple(row) for row in self.board)
+
+        cr = getattr(self, "castling_rights", None)
+        if isinstance(cr, dict):
+            # stable ordering
+            cr_tuple = tuple(sorted((k, bool(v)) for k, v in cr.items()))
+        else:
+            cr_tuple = ()
+
+        ep = getattr(self, "en_passant_target", None)
+
+        return (board_tuple, self.player, cr_tuple, ep)
+
+    def _record_position(self) -> None:
+        """Increment repetition count and push current key onto the stack."""
+        k = self.position_key()
+        self._pos_stack.append(k)
+        self.position_counts[k] = self.position_counts.get(k, 0) + 1
+
+    def _unrecord_position(self) -> None:
+        """Pop current key from the stack and decrement repetition count."""
+        if not getattr(self, "_pos_stack", None):
+            return
+        k = self._pos_stack.pop()
+        cnt = self.position_counts.get(k, 0)
+        if cnt <= 1:
+            self.position_counts.pop(k, None)
+        else:
+            self.position_counts[k] = cnt - 1
+
+    def is_threefold_repetition(self) -> bool:
+        """True iff the current position has occurred at least 3 times."""
+        if not getattr(self, "_pos_stack", None):
+            return False
+        k = self._pos_stack[-1]
+        return self.position_counts.get(k, 0) >= 3
+
+    def is_fifty_move_draw(self) -> bool:
+        """
+        True iff 50-move rule is reached.
+
+        halfmove_clock counts plies (half-moves), so threshold is 100 plies.
+        """
+        return getattr(self, "halfmove_clock", 0) >= 100
+
+    def draw_reason(self) -> Optional[str]:
+        if self.is_threefold_repetition():
+            return "threefold_repetition"
+        if self.is_fifty_move_draw():
+            return "fifty_move_rule"
+        return None
+
+    def is_draw(self) -> bool:
+        return self.draw_reason() is not None
 
     def get_board_string(self: "GameState") -> str:
         """
@@ -262,13 +339,28 @@ class GameState():
         prev_cr = getattr(self, "castling_rights", None)
         if isinstance(prev_cr, dict):
             prev_cr = prev_cr.copy()
+        prev_hmc = getattr(self, "halfmove_clock", 0)  # NEW
 
         # initialize undo stack if needed
         if not hasattr(self, "undo_stack"):
             self.undo_stack = []
-        self.undo_stack.append(UndoRecord(mv=mv, prev_en_passant_target=prev_ep, prev_castling_rights=prev_cr))
+        self.undo_stack.append(
+            UndoRecord(mv=mv, 
+                        prev_en_passant_target=prev_ep, 
+                        prev_castling_rights=prev_cr,
+                        prev_halfmove_clock=prev_hmc,
+            )
+        )
 
         (r0, c0), (r1, c1) = mv.start, mv.end
+
+        # --- 50-move bookkeeping: reset on pawn move or capture, else +1 ---
+        is_pawn_move = (mv.piece_moved[1] == "P")
+        is_capture = (mv.piece_captured != "--")
+        if is_pawn_move or is_capture:
+            self.halfmove_clock = 0
+        else:
+            self.halfmove_clock = getattr(self, "halfmove_clock", 0) + 1
 
         # apply move on board (basic)
         self.board[r0][c0] = "--"
@@ -287,6 +379,15 @@ class GameState():
             promo_row = 0 if mv.piece_moved[0] == "w" else 7
             if r1 == promo_row:
                 self.board[r1][c1] = mv.piece_moved[0] + "Q"
+
+        # --- en passant target (for repetition key + later EP rules) ---
+        # Set only on a 2-square pawn advance, otherwise clear.
+        if mv.piece_moved[1] == "P" and abs(r1 - r0) == 2:
+            mid_row = (r0 + r1) // 2
+            self.en_passant_target = (mid_row, c0)
+        else:
+            self.en_passant_target = None
+        
 
         # --- update castling rights ---
         if hasattr(self, "castling_rights") and isinstance(self.castling_rights, dict):
@@ -335,6 +436,9 @@ class GameState():
         self.turn += 1
         self.switch_player()
 
+        # NEW: record the resulting position (after side-to-move flips)
+        self._record_position()
+
     def _mk_move(self: "GameState", start: Sq, end: Sq) -> Move:
         """
         Internal helper to construct a Move from start and end squares
@@ -357,6 +461,11 @@ class GameState():
         """
         if not self.move_log:
             return
+        
+        # NEW: unrecord current position (the one we're leaving)
+        if hasattr(self, "_pos_stack"):
+            self._unrecord_position()
+
 
         mv = self.move_log.pop()
 
@@ -386,6 +495,9 @@ class GameState():
             if hasattr(self, "castling_rights") and rec.prev_castling_rights is not None:
                 self.castling_rights = rec.prev_castling_rights
 
+            # NEW: restore halfmove clock
+            self.halfmove_clock = rec.prev_halfmove_clock
+            
             if record_legacy_history and self.history:
                 self.history.pop()
 

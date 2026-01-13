@@ -78,6 +78,13 @@ def play_self_game(
             # ensure current player's king is not left in check (illegal position)
             assert not gs.in_check(gs.player), f"Illegal position: {gs.player} is in check after move {mv}"
 
+                # After make_move, check draw rules
+        if hasattr(gs, "is_draw") and gs.is_draw():
+            print("\n=== DRAW ===")
+            if hasattr(gs, "draw_reason"):
+                print(f"Reason: {gs.draw_reason()}")
+            print(f"Last move: {mv}")
+            return data, 0
 
         # After make_move, gs.player is the opponent of the player who just moved.
         # If gs.player is checkmated, the winner is the other side.

@@ -22,7 +22,7 @@ AI_TEMP = 0.0              # 0 = deterministic
 # Model setup (loads once)
 # ----------------------------
 
-MODEL_PATH = "chess\scr\policy_value_net.pt"
+MODEL_PATH = "chess\scr\policy_value_net_3.pt"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 try:
