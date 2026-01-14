@@ -22,7 +22,11 @@ AI_TEMP = 0.0              # 0 = deterministic
 # Model setup (loads once)
 # ----------------------------
 
-MODEL_PATH = "chess\scr\policy_value_net_3.pt"
+
+########################################################################################################
+MODEL_PATH = "chess/scr/policy_value_net_285.pt"
+########################################################################################################
+
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 try:
@@ -62,6 +66,21 @@ info_frm.grid(row=0, column=1)
 # add textbox into info_frame
 text_box = tk.Label(info_frm, text = "White goes first.\n\n Left click to move.\n\nRight click to see available moves.", font= ("Courier", 12))
 text_box.pack()
+
+# ----------------------------
+# NEW: AI info panel (top moves, value, etc.)
+# ----------------------------
+ai_box = tk.Text(info_frm, height=18, width=44, font=("Courier", 11))
+ai_box.pack(pady=(10, 0))
+ai_box.insert("1.0", "AI info will appear here.\nPress 'a' to make AI move.\n")
+ai_box.config(state="disabled")
+
+def set_ai_info(text: str) -> None:
+    """Replace contents of the AI info panel."""
+    ai_box.config(state="normal")
+    ai_box.delete("1.0", "end")
+    ai_box.insert("1.0", text)
+    ai_box.config(state="disabled")
 
 # load in images using a path relative to this file's directory
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -331,9 +350,17 @@ def ai_make_move(event=None):
 
     reset_background()
 
+    # Evaluate current position (optional but useful to display)
+    v_before = None
+    try:
+        v_before = float(critic_value(model, game))
+    except Exception:
+        v_before = None
+
     # Choose move
     if AI_USE_MCTS:
-        pi_moves = mcts_search(game, model, num_sims=AI_SIMS, show_progress=True)
+        # NOTE: show_progress=True can spam stdout / feel "laggy" in GUI usage
+        pi_moves = mcts_search(game, model, num_sims=AI_SIMS, show_progress=False)
     else:
         pi_moves = policy_distribution(model, game)
 
@@ -341,23 +368,36 @@ def ai_make_move(event=None):
     if mv is None:
         return
 
+    # Build top-k candidate list for display (before applying move)
+    topk = 10
+    top = sorted(pi_moves.items(), key=lambda kv: float(kv[1]), reverse=True)[:topk]
+
     # Apply
     game.make_move(mv)
     draw_pieces(board=game.board)
     extra = f"\nAI last move: {_move_to_str(mv)}"
     update_text_info(game, checkmate=game.is_checkmate(), stalemate=game.is_stalemate(), extra_text=extra)
 
-    # Optional: print what it did + value
+    # NEW: update AI info panel in the GUI
     try:
-        v = float(critic_value(model, game))
-        top = sorted(pi_moves.items(), key=lambda kv: kv[1], reverse=True)[:5]
-        print("\nAI played:", _move_to_str(mv))
-        print("Value (side to move):", f"{v:+.3f}")
-        print("Top moves:")
-        for m, p in top:
-            print(f"  {p:7.4f}  {_move_to_str(m)}")
+        v_after = float(critic_value(model, game))
     except Exception:
-        pass
+        v_after = None
+
+    lines = []
+    lines.append(f"AI enabled: {AI_ENABLED} | plays: {AI_PLAYS} | MCTS: {AI_USE_MCTS}")
+    lines.append(f"Sims: {AI_SIMS} | Temp: {AI_TEMP}")
+    lines.append("")
+    lines.append(f"Chosen move: {_move_to_str(mv)}")
+    if v_before is not None:
+        lines.append(f"Value before (side to move): {v_before:+.3f}")
+    if v_after is not None:
+        lines.append(f"Value after  (side to move): {v_after:+.3f}")
+    lines.append("")
+    lines.append("Top candidate moves:")
+    for i, (m, p) in enumerate(top, start=1):
+        lines.append(f"{i:2d}. {float(p):7.4f}  {_move_to_str(m)}")
+    set_ai_info("\n".join(lines))
 
 def toggle_ai(event=None):
     global AI_ENABLED

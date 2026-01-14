@@ -125,7 +125,12 @@ class PolicyValueNet(nn.Module):
 # --- User-facing helpers: GameState -> {Move: prob}, and GameState -> value ---
 
 @torch.no_grad()
-def policy_distribution(model: PolicyValueNet, gs, device: Optional[torch.device] = None) -> Dict[object, float]:
+def policy_distribution(
+    model: PolicyValueNet,
+    gs,
+    device: Optional[torch.device] = None,
+    legal_moves: Optional[List[object]] = None,
+) -> Dict[object, float]:
     """
     Returns a dict mapping each legal Move to its probability under the current policy.
     """
@@ -133,23 +138,28 @@ def policy_distribution(model: PolicyValueNet, gs, device: Optional[torch.device
     if device is None:
         device = next(model.parameters()).device
 
+    # Encode state and run model ON DEVICE
     x = encode_gamestate(gs).unsqueeze(0).to(device)  # [1,13,8,8]
-    logits, _v = model(x)  # [1,4096]
-    logits = logits.squeeze(0).cpu()
+    logits, _v = model(x)  # logits: [1,4096] on device
 
-    legal_moves = gs.get_all_legal_moves(gs.player, as_moves=True)
-    mask = torch.zeros(NUM_ACTIONS, dtype=torch.bool)
-    actions = []
-    for mv in legal_moves:
-        a = move_to_action(mv)
-        actions.append(a)
-        mask[a] = True
+    # Determine legal moves
+    if legal_moves is None:
+        legal_moves = gs.get_all_legal_moves(gs.player, as_moves=True)
 
-    masked_logits = logits.clone()
-    masked_logits[~mask] = -float("inf")
-    probs = F.softmax(masked_logits, dim=0)
+    if len(legal_moves) == 0:
+        return {}
 
-    return {mv: float(probs[move_to_action(mv)].item()) for mv in legal_moves}
+    # Map legal moves to action indices (small list)
+    legal_actions = [move_to_action(mv) for mv in legal_moves]
+    legal_actions_t = torch.tensor(legal_actions, device=device, dtype=torch.long)
+
+    # Gather only legal logits and softmax ON DEVICE
+    legal_logits = logits[0, legal_actions_t]  # [num_legal]
+    legal_probs = F.softmax(legal_logits, dim=0)
+
+    # Return small CPU-side dict (minimal sync)
+    legal_probs_cpu = legal_probs.detach().cpu().numpy()
+    return {mv: float(p) for mv, p in zip(legal_moves, legal_probs_cpu)}
 
 @torch.no_grad()
 def critic_value(model: PolicyValueNet, gs, device: Optional[torch.device] = None) -> float:
@@ -161,5 +171,7 @@ def critic_value(model: PolicyValueNet, gs, device: Optional[torch.device] = Non
         device = next(model.parameters()).device
     x = encode_gamestate(gs).unsqueeze(0).to(device)
     _logits, v = model(x)
-    return float(v.squeeze().item())
+    # Keep everything on device until the final scalar extraction.
+    # (Still one sync at the end, but avoids any intermediate CPU moves.)
+    return v.squeeze().detach().item()
 #######################

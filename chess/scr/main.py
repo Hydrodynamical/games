@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 import os
 import random
+from collections import deque
 
 import numpy as np
 import torch
@@ -40,7 +41,7 @@ def set_seed(seed: int) -> None:
     os.environ.setdefault("PYTHONHASHSEED", str(seed))
 
 
-def trunc_penalty_schedule(
+def penalty_schedule(
     iteration: int,
     p0: float = 0.2,
     half_life: float = 10.0,
@@ -57,7 +58,7 @@ def trunc_penalty_schedule(
 
 def mcts_sims_schedule(
     game_idx: int,
-    start: int = 10,
+    start: int = 50,
     end: int = 200,
     warmup_games: int = 100,
 ) -> int:
@@ -73,19 +74,40 @@ def main():
     """This function runs self-play training iterations."""
     SEED = 1
     set_seed(SEED)
+    # MPS (Mac) > CUDA (NVIDIA) > CPU device selection
+    if torch.backends.mps.is_available():
+        device = torch.device("mps")
+        print(f"Using MPS device: {device}")
+    elif torch.cuda.is_available():
+        device = torch.device("cuda")
+        print(f"Using CUDA device: {device}")
+    else:
+        device = torch.device("cpu")
+        print(f"Using CPU device: {device}")
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
 
     model = PolicyValueNet().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
     game_idx = 0
 
+    # ----------------------------
+    # Replay buffer + minibatching
+    # ----------------------------
+    # Store (state_tensor, pi_vector, z) on CPU to save GPU memory.
+    REPLAY_CAPACITY = 100_000     # number of positions to keep
+    BATCH_SIZE = 256
+    UPDATES_PER_ITER = 2          # gradient steps per self-play game
+    MIN_BUFFER_TO_TRAIN = 2_000   # warm-up before training
+    replay = deque(maxlen=REPLAY_CAPACITY)
+
     for iteration in range(1000):
         print(f"\n=== Iteration {iteration} ===")
-        trunc_penalty = trunc_penalty_schedule(iteration, p0=0.2, half_life=10.0, floor=0.0)
+        trunc_penalty = penalty_schedule(iteration, p0=0.5, half_life=100.0, floor=0.0)
+        draw_penalty = penalty_schedule(iteration, p0=0.5, half_life=100.0, floor=0.0)
+        
         print(f"trunc_draw_penalty (annealed): {trunc_penalty:.4f}")
+        print(f"draw_penalty (annealed): {draw_penalty:.4f}")
 
         # Fresh game
         gs = GameState()
@@ -93,33 +115,45 @@ def main():
         game_data, result = play_self_game(
             gs,
             model,
-            num_mcts_sims=mcts_sims_schedule(game_idx, start=50, end=300, warmup_games=100),
+            num_mcts_sims=mcts_sims_schedule(game_idx, start=50, end=100, warmup_games=100),
             temperature=0.25, # was 0.9
             max_moves=200,
+            show_progress=False,
             trunc_draw_penalty=trunc_penalty,  # annealed toward 0 over training
-            diagnostics_per_ply=True,
-            add_root_dirichlet=False,
+            draw_penalty=draw_penalty,        # annealed toward 0 over training
+            diagnostics_per_ply=False,
+            add_root_dirichlet=True,
             dir_alpha=0.3,
             dir_epsilon=0.25
         )
 
-        # Assign z values
-        training_batch = []
+        # Convert game to training examples and push into replay buffer
         for state, pi, player in game_data:
             z = result if player == "w" else -result
-            training_batch.append((state, pi, z))
+            # Detach + store on CPU so replay doesn't retain any graphs / GPU tensors
+            replay.append((state.detach().cpu(), pi.detach().cpu(), float(z)))
 
-        stats = train_step(
-            model,
-            optimizer,
-            training_batch,
-            device,
-        )
+        print(f"Replay size: {len(replay)}")
 
-        print(stats)
+        # Train only after some buffer warm-up, then do a few minibatch updates
+        stats = None
+        if len(replay) >= MIN_BUFFER_TO_TRAIN:
+            for _ in range(UPDATES_PER_ITER):
+                batch_size = min(BATCH_SIZE, len(replay))
+                minibatch = random.sample(list(replay), batch_size)
+                stats = train_step(
+                    model,
+                    optimizer,
+                    minibatch,
+                    device,
+                )
+            print(stats)
+        else:
+            print("Warming up replay buffer (skipping training this iter).")
 
-        # Save every iteration (depth is deep, takes a long time to generate one iteration)
-        torch.save(model.state_dict(), f"chess/scr/policy_value_net_{iteration}.pt")
+        # Save every 5 iterations
+        if iteration % 5 == 0:
+            torch.save(model.state_dict(), f"chess/scr/policy_value_net_{iteration}.pt")
 
 
 if __name__ == "__main__":

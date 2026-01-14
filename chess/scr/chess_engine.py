@@ -515,6 +515,48 @@ class GameState():
         else:
             return "b"
 
+    def fast_copy_for_search(self) -> "GameState":
+        """Fast, partial copy of GameState for MCTS.
+
+        Copies only the minimal state required to play forward.
+        Avoids deepcopy of histories, logs, and large Python objects.
+
+        Notes
+        -----
+        - The returned copy is intended for forward playout only (no need to
+          preserve full move history).
+        - Draw bookkeeping is initialized to a minimal consistent state so that
+          `make_move()` and `is_draw()` continue to work.
+        """
+        gs2 = GameState.__new__(GameState)  # bypass __init__
+
+        # Core board state
+        gs2.board = [row[:] for row in self.board]
+        gs2.player = self.player
+        gs2.turn = self.turn
+        gs2.board_dimension = self.board_dimension
+
+        # Special-move state
+        gs2.en_passant_target = getattr(self, "en_passant_target", None)
+        cr = getattr(self, "castling_rights", None)
+        gs2.castling_rights = cr.copy() if isinstance(cr, dict) else cr
+
+        # Draw bookkeeping (needed because make_move() calls _record_position())
+        gs2.halfmove_clock = getattr(self, "halfmove_clock", 0)
+        try:
+            k = self.position_key()
+        except Exception:
+            k = None
+        gs2.position_counts = {k: 1} if k is not None else {}
+        gs2._pos_stack = [k] if k is not None else []
+
+        # Minimal stacks/logs
+        gs2.move_log = []
+        gs2.undo_stack = []
+        gs2.history = []  # legacy, expensive, unused in MCTS
+
+        return gs2
+
     def pawn_moves(self: "GameState", start: Sq, board_dimensions: int = 8, respect_turn_order: bool = True, is_attack: bool = False) -> list[Move]:
         """
         Generate pseudo-legal pawn moves from a given square.
