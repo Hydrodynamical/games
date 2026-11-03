@@ -1,20 +1,17 @@
 # Games
 
-This project contains basic game engines written in Python with minimal package dependencies. Currently only chess is completed. 
+A personal project exploring a chess engine and graphical interface in Python. This is an exploratory implementation; the roadmap below records rules and interface work.
 
 ## Getting Started
 
-First, clone the github repository by running the following code in the terminal:
+```bash
+git clone https://github.com/Hydrodynamical/games.git
+cd games
+```
 
-`git clone https://github.com/Hydrodynamical/games.git`
-
-Then navigate to the game you would like to try out. For example 
-
-`cd chess`
-
-and then to run the program 
-
-`python main.py`
+Create one of the documented environments below from the repository root.
+The chess entry point is `chess/main.py`; run it from the `chess/` directory
+using the interpreter from the environment you installed.
 
 ## Reproducible Python Environments
 
@@ -29,7 +26,7 @@ Currently there are two environments:
 ### Create + Install (Python 3.12 for ML)
 
 ```bash
-cd /Users/jkmiller/games
+# From the repository root
 python3.12 -m venv .venv312
 ./.venv312/bin/python -m pip install -U pip
 ./.venv312/bin/python -m pip install -r requirements/requirements-py312.lock.txt
@@ -40,7 +37,7 @@ python3.12 -m venv .venv312
 Only use this if you already have a Python 3.15 alpha installed locally.
 
 ```bash
-cd /Users/jkmiller/games
+# From the repository root
 python3.15 -m venv .venv
 ./.venv/bin/python -m pip install -U pip
 ./.venv/bin/python -m pip install -r requirements/requirements-py315.lock.txt
@@ -51,7 +48,7 @@ python3.15 -m venv .venv
 When you change dependencies inside an environment, regenerate its lock file:
 
 ```bash
-cd /Users/jkmiller/games
+# From the repository root
 ./.venv312/bin/python -m pip freeze --exclude-editable | sort > requirements/requirements-py312.lock.txt
 ./.venv/bin/python -m pip freeze --exclude-editable | sort > requirements/requirements-py315.lock.txt
 ```
@@ -76,7 +73,7 @@ Commit the updated files under `requirements/` and push to GitHub.
   - Default to queen promotion
   - UI: Popup with prompt for string input "Q,N,B,R,".
 
-- [!] **Correct undo functionality**
+- [ ] **Correct undo functionality**
   - Store captured piece in move log
   - Restore board state exactly on undo
   - Prepare undo logic for future MCTS/search (no deepcopies)
@@ -92,7 +89,7 @@ Commit the updated files under `requirements/` and push to GitHub.
   - Use attack-map logic (not legal moves)
   - Update after every move
 
-- [!] **Highlight capture moves**
+- [ ] **Highlight capture moves**
   - Display available capture moves in a distinct color (e.g. red)
   - Non-capture moves remain current highlight color
   - Use `is_attack=False` move generation + board inspection
@@ -100,7 +97,7 @@ Commit the updated files under `requirements/` and push to GitHub.
 ---
 
 ### UI / Interaction
-- [!] **Add undo button**
+- [ ] **Add undo button**
   - Revert last move using corrected undo logic
   - Sync board, player, and move history
 
