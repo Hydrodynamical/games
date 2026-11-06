@@ -72,7 +72,7 @@ A longer experiment can start with:
 .venv/bin/python chess/scr/main.py --iterations 100 --sims 100 --max-moves 200
 ```
 
-Use `--help` for replay capacity, seeds, checkpoint intervals, threads, and device options. Checkpoints go to `chess/scr/checkpoints/` by default. `--resume PATH` loads network weights; optimizer and replay state start fresh. CPU, CUDA, and Apple MPS are supported when available; automated neural checks use CPU.
+Use `--help` for replay capacity, seeds, checkpoint intervals, threads, and device options. Each experiment gets its own `runs/<timestamp>-<id>/` folder, with checkpoints inside it by default. `--resume PATH` loads network weights; optimizer and replay state start fresh. CPU, CUDA, and Apple MPS are supported when available; automated neural checks use CPU.
 
 Play a new checkpoint with either interface:
 
@@ -82,6 +82,41 @@ Play a new checkpoint with either interface:
 ```
 
 **Checkpoint format changed:** the network now receives 20 input planes and produces 4,480 policy logits, including separate underpromotion actions. Older 13-plane/4,096-action checkpoints are rejected with an explanation and need retraining. Training assigns zero to draws and truncated games; stronger training will need longer games, evaluation matches, and careful treatment of truncation.
+
+## Inspect how training learns
+
+Run a short experiment with every game traced and repeated fixed-position checks:
+
+```bash
+.venv/bin/python chess/scr/main.py \
+  --iterations 12 --sims 64 --max-moves 200 --hidden 128 \
+  --batch-size 64 --min-buffer 256 --updates 2 --seed 1 --device cpu \
+  --run-dir runs/inspection-01 --trace-every 1 \
+  --probe-every 4 --probe-sims 80 --save-every 4 --report-every 1
+```
+
+Open `runs/inspection-01/report.html` in a browser. The report is a local, self-contained file with no network dependencies. It separates real chess endings from move-limit cutoffs, plots optimizer diagnostics, compares raw network predictions with MCTS on fixed positions, and lets you inspect individual game decisions on a board. A run folder must be empty or new, so an earlier experiment cannot be overwritten accidentally.
+
+Every game records a termination reason and UCI move history. Detailed position traces record the first game and every tenth game by default; `--trace-every 1` records all games and `0` disables detailed tracing. Fixed probes run at start, end, and every fifth game by default; `--probe-every 0` disables them. Reports refresh every five games and at completion or failure. Logs are written after each game/update and remain readable if a run is interrupted. To rebuild a report without training:
+
+```bash
+python3 chess/scr/report.py runs/inspection-01
+```
+
+The files are designed for direct inspection or later analysis:
+
+| File | Contents |
+|---|---|
+| `config.json`, `source/` | Hyperparameters, seed, software versions, source hashes and a copy of the exact training source |
+| `games.jsonl` | Actual ending, outcome, final FEN, moves, length, time, and optional per-move predictions/search traces |
+| `updates.jsonl` | Every optimizer update: losses, policy KL/agreement, value predictions/targets, gradient norm, and fraction of targets originating from cutoffs |
+| `probes.jsonl` | The same six positions before training and at later intervals; separate network and search behavior |
+| `summary.json` | Current run status, ending counts, cutoff fractions, replay composition, and checkpoints |
+| `report.html` | Interactive view of those records |
+
+Cutoffs use chess outcome `*` (unfinished), although their existing value-training target remains zero. The report distinguishes this assumption from actual draws. Metrics are observations of the current learning setup; fixed tactical checks and lower loss do not establish an Elo rating. See [the inspection guide](docs/training-inspection.md) for how to interpret the metrics.
+
+The [first recorded experiment](experiments/2026-11-06-inspection-01/README.md) includes configuration, game histories, update/probe measurements, and a learning figure: 8 checkmates and 4 cutoffs, with no demonstrated value-prediction advantage over always predicting zero.
 
 ## Tests
 

@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "status": "completed",
+  "started_at": "2026-11-06T18:34:43.474311+00:00",
+  "updated_at": "2026-11-06T18:37:12.503166+00:00",
+  "games_completed": 12,
+  "termination_counts": {
+    "checkmate": 8,
+    "move_limit": 4
+  },
+  "actual_draws": 0,
+  "decisive_games": 8,
+  "move_limit_games": 4,
+  "move_limit_fraction": 0.3333333333333333,
+  "positions_generated": 1874,
+  "cutoff_target_positions": 800,
+  "cutoff_target_fraction": 0.42689434364994666,
+  "mean_plies": 156.16666666666666,
+  "self_play_seconds": 99.42479524912778,
+  "optimizer_steps": 22,
+  "last_update": {
+    "loss": 7.280693054199219,
+    "policy_loss": 6.609713554382324,
+    "value_loss": 0.670979380607605,
+    "policy_target_entropy": 3.2077720165252686,
+    "policy_kl": 3.4019415378570557,
+    "policy_top1_agreement": 0.015625,
+    "predicted_value_mean": 0.0036224478390067816,
+    "predicted_value_std": 0.09310044348239899,
+    "target_value_mean": -0.046875,
+    "target_value_std": 0.8183383941650391,
+    "value_mae": 0.697251558303833,
+    "learning_rate": 0.001,
+    "gradient_norm": 0.6134730345524181,
+    "game": 12,
+    "step": 22,
+    "batch_size": 64,
+    "buffer_size": 1874,
+    "duration_seconds": 0.05732575000729412,
+    "cutoff_target_fraction": 0.328125,
+    "target_win_fraction": 0.3125,
+    "target_loss_fraction": 0.359375,
+    "actual_draw_target_fraction": 0.0
+  },
+  "checkpoints": [
+    {
+      "path": "checkpoints/policy_value_net_0.pt",
+      "game": 0,
+      "step": 0
+    },
+    {
+      "path": "checkpoints/policy_value_net_4.pt",
+      "game": 4,
+      "step": 6
+    },
+    {
+      "path": "checkpoints/policy_value_net_8.pt",
+      "game": 8,
+      "step": 14
+    },
+    {
+      "path": "checkpoints/policy_value_net_12.pt",
+      "game": 12,
+      "step": 22
+    }
+  ],
+  "replay": {
+    "positions": 1874,
+    "cutoff_positions": 800,
+    "draw_positions": 0,
+    "decisive_positions": 1074
+  },
+  "error": null
+}
