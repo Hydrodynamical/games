@@ -133,6 +133,8 @@ The [continuation experiment](experiments/2026-11-06-hikaru-supervised-02/README
 
 The [self-play fine-tuning guide](docs/selfplay-finetuning.md) starts MCTS training from a supervised checkpoint with fresh optimizer/replay state. A separate frozen outcome benchmark compares value predictions, while paired games compare both checkpoints with equal MCTS simulation budgets. Reports keep genuine draws and unresolved cutoffs separate and include zero-value baselines, decisive/drawn-game errors, and match histories.
 
+The [first self-play fine-tuning experiment](experiments/2026-11-06-hikaru-selfplay-01/README.md) completed 100 games from supervised epoch 3, but its final model lost the equal-MCTS comparison: 3 wins, 13 losses, and 4 draws. Fixed-benchmark value MSE decreased from 0.909 to 0.810, still worse than the zero baseline of 0.589, while human move imitation declined. This pilot supports retaining the supervised model as the playing baseline; all results and comparison-game replays are preserved.
+
 ## Tests
 
 The core and public interfaces can be checked without dependencies:

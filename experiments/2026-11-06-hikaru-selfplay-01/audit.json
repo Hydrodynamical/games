@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "audited_at": "2026-11-06T23:37:07.539226+00:00",
+  "status": "passed",
+  "training": {
+    "games": 100,
+    "all_histories_verified_with_python_chess": true,
+    "positions": 19465,
+    "optimizer_steps": 800,
+    "sampled_policy_and_value_positions_each": 51200,
+    "termination_counts": {
+      "insufficient_material": 21,
+      "checkmate": 67,
+      "threefold_repetition": 5,
+      "move_limit": 4,
+      "fifty_move_rule": 2,
+      "stalemate": 1
+    },
+    "cutoff_training_positions": 1600,
+    "cutoff_label_policy": "draw",
+    "replay": {
+      "positions": 19465,
+      "cutoff_positions": 1600,
+      "draw_positions": 8566,
+      "decisive_positions": 9299,
+      "policy_target_positions": 19465,
+      "value_target_positions": 19465,
+      "excluded_value_positions": 0
+    },
+    "source_hashes_verified": 27,
+    "initial_tensors_equal_baseline": true,
+    "final_changed_tensors": 16,
+    "baseline_sha256": "b6360d2b1de42fc704813248946830394bd3eccafa0ab251fd997f627abef12a",
+    "candidate_game_100_sha256": "8426eb6aa18c9c58be09bf34eb8e8971af590e9cfdd6f3a257e60ea34efeffae",
+    "benchmark_frozen_before_training": true,
+    "no_exact_training_benchmark_whole_history_overlap": true,
+    "benchmark_manifest_sha256": "a08c9d2d72639a8d07ce6cc6718d506a3fecee6ad7be0b8e31ecfc4c642ef095",
+    "benchmark_games_sha256": "528f95181f27e4b938db02cb0de1a6dc91a9eb3ac19cf309240db6f5b2bf281c"
+  },
+  "limitations": [
+    "Training minibatch tensors are not retained; source, ledger, target population statistics, and finite logged losses were checked, not gradients recomputed.",
+    "Human retention population/hash integrity is checked; full-network human inference is not independently repeated.",
+    "Fixed benchmark outcomes describe baseline self-play, not minimax values; within-game correlation remains and match results do not establish Elo."
+  ],
+  "comparison": {
+    "candidate_is_fixed_game_100_checkpoint": true,
+    "matched_pairs": 10,
+    "games": 20,
+    "candidate_selection_precedes_comparison_and_diagnostics": true,
+    "candidate_selection_sha256": "333d5769e20d551970c7eae4384ae20281c49a3809148561de818c2329f411ca",
+    "configured_equal_mcts_simulations": 64,
+    "all_match_histories_and_endings_verified": true,
+    "matches": {
+      "candidate_wins": 3,
+      "baseline_wins": 13,
+      "actual_draws": 4,
+      "unresolved_cutoffs": 0
+    },
+    "value_positions_verified_against_oracle_histories": 3150,
+    "all_value_metrics_recomputed": true,
+    "paired_whole_game_bootstrap_recomputed": true,
+    "values": {
+      "positions": 3150,
+      "games": 20,
+      "baseline": {
+        "mse": 0.9088569443085163,
+        "mae": 0.7652421966563016,
+        "mean_prediction": 0.015304852500908994,
+        "mean_absolute_prediction": 0.4848881387267639
+      },
+      "candidate": {
+        "mse": 0.809745801011443,
+        "mae": 0.7241394660023359,
+        "mean_prediction": 0.015792928293461926,
+        "mean_absolute_prediction": 0.3028859869257865
+      },
+      "zero": {
+        "mse": 0.5888888888888889,
+        "mae": 0.5888888888888889,
+        "mean_prediction": 0.0,
+        "mean_absolute_prediction": 0.0
+      },
+      "candidate_minus_baseline_mse": -0.09911114329707327,
+      "candidate_minus_baseline_mae": -0.041102730653965636
+    },
+    "by_game_outcome": {
+      "decisive": {
+        "positions": 1855,
+        "games": 15,
+        "baseline": {
+          "mse": 1.363091962699447,
+          "mae": 0.9999165232295504,
+          "mean_prediction": 0.01983130553726614,
+          "mean_absolute_prediction": 0.5238435946699581
+        },
+        "candidate": {
+          "mse": 1.3139149998979913,
+          "mae": 1.0639991613412765,
+          "mean_prediction": 0.02169195394520585,
+          "mean_absolute_prediction": 0.34866306479619263
+        },
+        "zero": {
+          "mse": 1.0,
+          "mae": 1.0,
+          "mean_prediction": 0.0,
+          "mean_absolute_prediction": 0.0
+        },
+        "candidate_minus_baseline_mse": -0.04917696280145578,
+        "candidate_minus_baseline_mae": 0.0640826381117261
+      },
+      "draw": {
+        "positions": 1295,
+        "games": 5,
+        "baseline": {
+          "mse": 0.2581959720188046,
+          "mae": 0.42908708021353975,
+          "mean_prediction": 0.008821014367748757,
+          "mean_absolute_prediction": 0.42908708021353975
+        },
+        "candidate": {
+          "mse": 0.0875574890928739,
+          "mae": 0.2373134159222317,
+          "mean_prediction": 0.007342972630153061,
+          "mean_absolute_prediction": 0.2373134159222317
+        },
+        "zero": {
+          "mse": 0.0,
+          "mae": 0.0,
+          "mean_prediction": 0.0,
+          "mean_absolute_prediction": 0.0
+        },
+        "candidate_minus_baseline_mse": -0.1706384829259307,
+        "candidate_minus_baseline_mae": -0.19177366429130804
+      }
+    },
+    "bootstrap": {
+      "unit": "whole game, paired between models",
+      "samples": 2000,
+      "seed": 1,
+      "confidence_level": 0.95,
+      "scored_games": 20,
+      "interpretation": "descriptive percentile interval on this fixed benchmark; not a strength confidence interval",
+      "candidate_minus_baseline_mse": [
+        -0.1879239091422045,
+        0.0038824217150242738
+      ],
+      "candidate_minus_baseline_mae": [
+        -0.11008988310926274,
+        0.05142604827230014
+      ]
+    },
+    "curve_checkpoint_and_benchmark_hashes_verified": 6,
+    "human_retention_policy_positions": 22547,
+    "human_retention_value_positions": 44899,
+    "comparison_summary_sha256": "58179645d39f933d6582d00a2bed96aeb48977557441b222edd720f8023b8d19",
+    "comparison_positions_sha256": "0334735605bf450e0b9e91a4deed177b58d1eb7ba237ad35551b8af86807fb97",
+    "comparison_matches_sha256": "9ea88b863920995628c3e6ef6672f76ca0d8ce67f098b814a63774e4bf5b0fb3",
+    "human_retention_sha256": "27b1536254f6a244961b5a4f2f1516c9a6f76c2beba81f88c9459232e7e004a8",
+    "value_curve_sha256": "ef376a8fd4e52e0955ba679395c2ca05517a0b92fe08c3085a3515effccd869c"
+  }
+}

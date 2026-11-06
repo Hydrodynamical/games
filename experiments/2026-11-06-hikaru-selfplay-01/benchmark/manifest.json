@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "kind": "frozen_selfplay_value_benchmark",
+  "status": "completed",
+  "benchmark_id": "selfplay-value-0e8210ae916d2836d29e",
+  "started_at": "2026-11-06T23:05:30.433636+00:00",
+  "checkpoint": "runs/2026-11-06-hikaru-supervised-02/checkpoints/best.pt",
+  "checkpoint_sha256": "b6360d2b1de42fc704813248946830394bd3eccafa0ab251fd997f627abef12a",
+  "settings": {
+    "games": 20,
+    "sims": 64,
+    "temperature": 1.0,
+    "max_plies": 400,
+    "seed": 20261107,
+    "seed_policy": "game seed = seed + zero-based game_index",
+    "threads": 4,
+    "device": "cpu",
+    "root_noise": true,
+    "dir_alpha": 0.3,
+    "dir_epsilon": 0.25,
+    "search_tree_reuse": true,
+    "search_batch_size": 16,
+    "initial_fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+  },
+  "source_sha256": {
+    "chess/scr/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "chess/scr/chess_engine.py": "49b419f84c718deac6b7ca931ce6a5013d5ade645983c326a7a6ba2e9699b3a2",
+    "chess/scr/compare_training.py": "3bd89dcbac08e032ac5d79be71a6af321de291786648245ae7c610889c3a0407",
+    "chess/scr/diagnostics.py": "67e676e41ba96f250e38571664525ce014cba753b01d6c7e5680feb784014eda",
+    "chess/scr/download_games.py": "f7ad387b3c67c21d678118d4d3e4031bb0f3369187e594b61d906999cafe8585",
+    "chess/scr/evaluate_human.py": "e13065e6104a305764495a5a3ff44d4234fb94380516c8e6b38c7944ee8bf0b3",
+    "chess/scr/evaluate_models.py": "e20003c220a61d88aebf1fde7137fc46b6e5e13e6a1c429d2f6ec92ff3a1977d",
+    "chess/scr/experiment.py": "9a8be548706293b087519a92dfcdff17ddfcdde01354aa11316d6898213f063b",
+    "chess/scr/human_data.py": "8181ee26996afe2da3441da901ba364b2ee93ce82b5aaa0ffa6fa3841672b132",
+    "chess/scr/human_report.py": "b4d9f1a95920a2922fd4ef0e91db6e9f5b9ebbf0b7e194188664d1aca9609b10",
+    "chess/scr/main.py": "8840a2698efe8abdfc1d3c0720fdac766065e8e21bfe972805c29e72b1943a63",
+    "chess/scr/mcts.py": "71e32df62f2ce3c79afcd27a0998af94263cc0cc6b594c0d553578b0a74e3d95",
+    "chess/scr/play_with_model.py": "3703501086a6f492354f0f2ea3fb8763cb5975b117e1da8a45ef6fdc24488fd1",
+    "chess/scr/report.py": "fa4b0ae2b3619f414fd5868481aeb803765e72efac377dc6561a4c8b04881f03",
+    "chess/scr/rl_interface.py": "074ad291d65b15d5f79673e234fbde6a88c20dbcc78025e9b24a71964368a020",
+    "chess/scr/self_play.py": "cc56c706fa3fb603c3fd0a096e7b5eb2ac72e00bd3237a92b6bd27f8857c7a89",
+    "chess/scr/supervised.py": "de29ff56a5cbeb9e0ace17b7bf3642ffe88fca6abea1f31ec706125fa157d6b8",
+    "chess/scr/train.py": "107d150734c954ffe80eb7957054dd523fc65d2f1df9707b19daa3f564d48bf8",
+    "chess/scr/uci.py": "5efa4e2af430ca194a04ea773c052de528475d0e62c635013c54c32f5a4ac82c",
+    "chess/scr/value_benchmark.py": "5b746b0cd76d57f1e53e7a9fa8e94e7f04a029ef0d687df63ed9f55a4ba60eb7"
+  },
+  "torch_version": "2.9.1",
+  "python_version": "3.12.12",
+  "games_file": "games.jsonl",
+  "games_sha256": "528f95181f27e4b938db02cb0de1a6dc91a9eb3ac19cf309240db6f5b2bf281c",
+  "counts": {
+    "games": 20,
+    "completed_games": 20,
+    "unresolved_games": 0,
+    "decisive_games": 15,
+    "actual_draws": 5,
+    "positions": 3150,
+    "eligible_value_positions": 3150,
+    "excluded_value_positions": 0,
+    "result_counts": {
+      "1/2-1/2": 5,
+      "1-0": 11,
+      "0-1": 4
+    },
+    "termination_counts": {
+      "insufficient_material": 4,
+      "checkmate": 15,
+      "threefold_repetition": 1
+    },
+    "excluded_game_reasons": {}
+  },
+  "purpose": "Held-out observed-outcome value evaluation; never add these games to training replay.",
+  "value_perspective": "player to move at every pre-move position",
+  "eligibility": "Use all positions in completed games with known outcomes; exclude entire truncated/result-* games; retain genuine draws.",
+  "limitations": [
+    "Labels are outcomes under the frozen baseline self-play policy, not minimax values.",
+    "Positions within one game are correlated; report game-level uncertainty.",
+    "A fixed game budget may yield few completed games or decisive outcomes; report counts without replacing games selectively."
+  ],
+  "updated_at": "2026-11-06T23:08:42.449468+00:00",
+  "duration_seconds": 192.04583624994848,
+  "completed_at": "2026-11-06T23:08:42.483101+00:00"
+}

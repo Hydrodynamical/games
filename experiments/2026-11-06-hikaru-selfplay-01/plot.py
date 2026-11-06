@@ -17,7 +17,6 @@ from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.patches import Patch
 from matplotlib.ticker import MaxNLocator
 import numpy as np
 
@@ -134,7 +133,10 @@ def make_figure(directory):
     fig = plt.figure(figsize=(15, 11.2), facecolor="#FAFCFD")
     grid = fig.add_gridspec(2, 2, left=.09, right=.96, top=.79, bottom=.20,
                            hspace=.66, wspace=.30)
-    fig.text(.035, .953, "Does MCTS self-play improve the supervised engine?", fontsize=23, fontweight="bold")
+    title = "Does MCTS self-play improve the supervised engine?"
+    if has_final and finite(matches.get("candidate_score_on_completed_games")) and matches["candidate_score_on_completed_games"] < .5:
+        title = "This self-play checkpoint lost to the supervised baseline"
+    fig.text(.035, .953, title, fontsize=23, fontweight="bold")
     budget = f"{target_games} games" if target_games is not None else "the predeclared game budget"
     fig.text(.035, .912, f"Supervised baseline → MCTS self-play · candidate fixed after {budget} · no test-based checkpoint selection",
              fontsize=11.4, color=MUTED)
@@ -145,6 +147,13 @@ def make_figure(directory):
     else:
         training_line = "Training summary pending · measurements will appear only when recorded"
     fig.text(.035, .877, training_line, fontsize=11, color=MUTED)
+    if has_final and finite(matches.get("candidate_score_on_completed_games")):
+        finding = f"Candidate match score: {matches['candidate_score_on_completed_games']:.1%}. "
+        if values.get("all", {}).get("candidate", {}).get("mse", math.inf) > values.get("all", {}).get("zero", {}).get("mse", math.inf):
+            finding += "Its benchmark value MSE remains worse than always predicting zero."
+        if matches["candidate_score_on_completed_games"] < .5:
+            finding += " Retain the supervised baseline."
+        fig.text(.035, .841, finding, fontsize=10.7, color="#975D22")
 
     ax = fig.add_subplot(grid[0, 0])
     style(ax, "A   Value prediction on the same held-out games")
@@ -158,14 +167,16 @@ def make_figure(directory):
         ax.axhline(baseline, color=BASELINE, linewidth=1.8, linestyle="--", label="Frozen supervised baseline")
         ax.axhline(zero, color=ZERO, linewidth=1.8, linestyle=":", label="Always-zero prediction")
         ax.set_xlim(min(x) - 3, max(max(x) + 5, target_games or 0))
-        ax.set_ylim(0, max(y + [baseline, zero, .05]) * 1.28)
+        ax.set_ylim(0, max(y + [baseline, zero, .05]) * 1.55)
         ax.set_xticks(x)
         ax.set_xlabel("Self-play training games", labelpad=8)
         ax.set_ylabel("Value MSE · lower is better", labelpad=8)
-        ax.annotate(f"{y[-1]:.3f}", (x[-1], y[-1]), xytext=(0, 8), textcoords="offset points", ha="center", color=CANDIDATE, fontsize=9)
+        ax.annotate(f"{y[-1]:.3f}", (x[-1], y[-1]), xytext=(0, -8), textcoords="offset points", ha="center", va="top", color=CANDIDATE, fontsize=9)
         ax.legend(frameon=False, fontsize=8.6, loc="upper left")
-        note(ax, f"{first['all']['positions']:,} positions in {first['all']['games']} completed benchmark games.\n"
-             f"Excluded: {first.get('excluded_unknown_outcome_games', '—')} unfinished games; their outcomes remain unknown.")
+        minimum = min(points, key=lambda row: row["metrics"]["all"]["candidate"]["mse"])
+        note(ax, f"{first['all']['positions']:,} positions in {first['all']['games']} completed games; "
+             f"{first.get('excluded_unknown_outcome_games', '—')} cutoffs excluded.\n"
+             f"Lowest observed MSE: {minimum['metrics']['all']['candidate']['mse']:.3f} at game {minimum['game']}; not used for selection.")
     else:
         pending(ax, "Fixed-checkpoint value curve pending.\nNo training-loss values are substituted.")
 
@@ -192,7 +203,11 @@ def make_figure(directory):
         delta = values.get("all", {}).get("candidate_minus_baseline_mse")
         change = f"Overall ΔMSE (self-play − supervised): {delta:+.3f}." if finite(delta) else ""
         interval = f"Paired game-bootstrap 95% interval: [{ci[0]:+.3f}, {ci[1]:+.3f}]." if ci else "Too few completed games for a paired interval."
-        note(ax, change + "\n" + interval)
+        shrinkage = ""
+        means = [values.get("all", {}).get(model, {}).get("mean_absolute_prediction") for model in ("baseline", "candidate")]
+        if all(finite(value) for value in means):
+            shrinkage = f"\nMean absolute predicted value: {means[0]:.3f} → {means[1]:.3f}."
+        note(ax, change + "\n" + interval + shrinkage)
     else:
         pending(ax, "Completed-game value comparison pending.\nDecisive and draw populations stay separate.")
 
@@ -227,7 +242,9 @@ def make_figure(directory):
         metrics = [("Top-one move agreement", "policy_top1_full_action", True),
                    ("Top-five move agreement", "policy_top5_full_action", True),
                    ("Move negative log likelihood ↓", "policy_nll_full_action", False),
-                   ("Human-outcome value MSE ↓", "value_mse", False)]
+                   ("Human-outcome value MSE ↓", "value_mse", False),
+                   ("Human-outcome value MAE ↓", "value_mae", False),
+                   ("Always-zero value MSE", "zero_value_baseline_mse", False)]
         cells = []
         for label, key, percent in metrics:
             numbers = [before.get(key), after.get(key)]
@@ -271,6 +288,8 @@ def main(argv=None):
     for extension in ("png", "svg"):
         output = destination / f"selfplay-comparison.{extension}"
         figure.savefig(output, dpi=170, facecolor=figure.get_facecolor())
+        if extension == "svg":
+            output.write_text("\n".join(line.rstrip() for line in output.read_text().splitlines()) + "\n")
         print(output)
     plt.close(figure)
 

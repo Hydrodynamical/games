@@ -1,0 +1,30 @@
+{
+  "started_at": "2026-11-06T23:34:08.453492+00:00",
+  "status": "completed",
+  "selection": "Final checkpoint after 100 games; no test/benchmark-based checkpoint selection or hyperparameter tuning.",
+  "device": "cpu",
+  "threads": 4,
+  "batch_size": 128,
+  "bootstrap_samples": 2000,
+  "bootstrap_seed": 1,
+  "input_sha256": {
+    "runs/2026-11-06-hikaru-supervised-02/checkpoints/best.pt": "b6360d2b1de42fc704813248946830394bd3eccafa0ab251fd997f627abef12a",
+    "experiments/2026-11-06-hikaru-selfplay-01/protocol.json": "b376583441d8f17ea488a970651e2a7a7c0e69fb13dcf5940bc45eb7c4bd68a2",
+    "runs/2026-11-06-hikaru-selfplay-01/config.json": "8e9d8a26e93e891767aaf5d1941b36e2e0f2294c2321c803ed525eadf21f44c0",
+    "runs/2026-11-06-hikaru-selfplay-01/summary.json": "8a6d7cbc3a6177d31a5715ca9f3800ad61de4313e759222cca85d4fa86bf5d12",
+    "runs/2026-11-06-hikaru-value-benchmark-01/manifest.json": "a08c9d2d72639a8d07ce6cc6718d506a3fecee6ad7be0b8e31ecfc4c642ef095",
+    "runs/2026-11-06-hikaru-value-benchmark-01/games.jsonl": "528f95181f27e4b938db02cb0de1a6dc91a9eb3ac19cf309240db6f5b2bf281c",
+    "data/hikaru-blitz-5000/prepared/manifest.json": "cd796ee9ce0a541d07565c0bcccd27c2c91ef01aea88d26231ba0dbe7636829e",
+    "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_0.pt": "14c8ffbd0aa7af53396eac71e715f4f5dd961d27496a3327f6f46f982d60c17d",
+    "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_20.pt": "9feb10d85971e2d6e553291ffefb02e8204f8d7e10bdf03225133b14e196e24c",
+    "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_40.pt": "c8775f35124c7217279b07db75f216d2892dfa5c376308cf49b59e0d4397cdcf",
+    "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_60.pt": "a50098ea6d606495f9d30a2f03820941db7b3a9ee84c7b53f795f9742b020fdf",
+    "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_80.pt": "d68cd15907cafe770eed4e7fddf3ae4dde8b72a7bfd4a9c577b8bdc99b05ef1b",
+    "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_100.pt": "8426eb6aa18c9c58be09bf34eb8e8971af590e9cfdd6f3a257e60ea34efeffae"
+  },
+  "script_sha256": "d67184eb6b4e5148adcf1ff3ab33ad8fb5394cc06b16fafc00a48c514cb62bbd",
+  "torch_version": "2.9.1",
+  "human_split": "test",
+  "population_note": "Frozen self-play benchmark and human holdout remain separate; neither selects the candidate.",
+  "completed_at": "2026-11-06T23:35:16.952829+00:00"
+}
