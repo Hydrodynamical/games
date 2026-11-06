@@ -191,6 +191,18 @@ class SupervisedRunTests(unittest.TestCase):
         return supervised.train_supervised(dataset, output, batch_size=5, hidden=8, threads=1,
                                            seed=12, device="cpu", **kwargs)
 
+    @staticmethod
+    def validation_sequence(*nlls):
+        return [{"policy_sample_count": 2, "value_sample_count": 4,
+                 "policy_nll_full_action": nll, "value_mse": .5} for nll in nlls]
+
+    def assert_checkpoint_equal(self, first, second):
+        first_state = torch.load(first, weights_only=True)["state_dict"]
+        second_state = torch.load(second, weights_only=True)["state_dict"]
+        self.assertEqual(first_state.keys(), second_state.keys())
+        for name, tensor in first_state.items():
+            self.assertTrue(torch.equal(tensor, second_state[name]), name)
+
     def test_runner_checkpoints_resume_identical_to_uninterrupted_training(self):
         with tempfile.TemporaryDirectory() as temporary, redirect_stdout(io.StringIO()), \
                 patch.object(supervised, "PolicyValueNet", self.tiny_network):
@@ -247,6 +259,126 @@ class SupervisedRunTests(unittest.TestCase):
             final = torch.load(summary["final_checkpoint"], weights_only=True)["state_dict"]
             self.assertTrue(all(torch.equal(initial[key], best[key]) for key in initial))
             self.assertTrue(any(not torch.equal(initial[key], final[key]) for key in initial))
+
+    def test_worsening_validation_stops_cleanly_and_keeps_earlier_best(self):
+        with tempfile.TemporaryDirectory() as temporary, redirect_stdout(io.StringIO()), \
+                patch.object(supervised, "PolicyValueNet", self.tiny_network):
+            root = Path(temporary)
+            dataset = self.prepare(root)
+            with patch.object(supervised, "evaluate_batches", side_effect=self.validation_sequence(1., .8, .9, 1.)):
+                summary = self.run_training(dataset, root / "run", epochs=8, patience=2)
+            self.assertEqual(summary["status"], "completed")
+            self.assertEqual(summary["epochs_requested"], 8)
+            self.assertEqual(summary["epochs_completed"], 3)
+            self.assertEqual(summary["completed_epoch"], 3)
+            self.assertEqual(summary["best_epoch"], 1)
+            self.assertEqual(summary["best_validation_nll"], .8)
+            self.assertEqual(summary["epochs_without_improvement"], 2)
+            self.assertTrue(summary["stopped_early"])
+            self.assertEqual(summary["stop_reason"], "patience_exhausted")
+            self.assert_checkpoint_equal(summary["best_checkpoint"], root / "run/checkpoints/epoch_1.pt")
+            self.assert_checkpoint_equal(summary["final_checkpoint"], root / "run/checkpoints/epoch_3.pt")
+            self.assertFalse((root / "run/checkpoints/epoch_4.pt").exists())
+
+    def test_min_delta_patience_is_separate_from_absolute_best(self):
+        # Small decreases remain eligible for best.pt; their cumulative decrease
+        # resets patience once it exceeds min_delta from the last reset.
+        cases = [("small", [1., .96, .94], 2, 0., .94),
+                 ("cumulative", [1., .96, .89, .88, .87], 4, .89, .87)]
+        with tempfile.TemporaryDirectory() as temporary, redirect_stdout(io.StringIO()), \
+                patch.object(supervised, "PolicyValueNet", self.tiny_network):
+            root = Path(temporary)
+            dataset = self.prepare(root)
+            for name, nlls, completed, reference, best in cases:
+                with self.subTest(name=name), patch.object(supervised, "evaluate_batches",
+                                                          side_effect=self.validation_sequence(*nlls)):
+                    summary = self.run_training(dataset, root / name, epochs=8, patience=2, min_delta=.1)
+                self.assertEqual(summary["completed_epoch"], completed)
+                self.assertEqual(summary["best_epoch"], completed)
+                self.assertEqual(summary["best_validation_nll"], best)
+                self.assertEqual(summary["patience_reference_nll"], reference or 1.)
+                self.assertEqual(summary["epochs_without_improvement"], 2)
+                self.assertTrue(summary["stopped_early"])
+                self.assert_checkpoint_equal(summary["best_checkpoint"], summary["final_checkpoint"])
+
+    def test_resume_preserves_best_weights_and_patience_and_matches_uninterrupted(self):
+        with tempfile.TemporaryDirectory() as temporary, redirect_stdout(io.StringIO()), \
+                patch.object(supervised, "PolicyValueNet", self.tiny_network):
+            root = Path(temporary)
+            dataset = self.prepare(root)
+            with patch.object(supervised, "evaluate_batches", side_effect=self.validation_sequence(1., .8, .9, 1., 1.1)):
+                full = self.run_training(dataset, root / "full", epochs=8, patience=3)
+            with patch.object(supervised, "evaluate_batches", side_effect=self.validation_sequence(1., .8, .9)):
+                self.run_training(dataset, root / "first", epochs=2, patience=3)
+            with patch.object(supervised, "evaluate_batches", side_effect=self.validation_sequence(.9, 1., 1.1)):
+                resumed = self.run_training(dataset, root / "resumed", epochs=6, patience=3,
+                                            resume=root / "first/checkpoints/epoch_2.pt")
+            for key in ("completed_epoch", "optimizer_steps", "best_epoch", "best_validation_nll",
+                        "epochs_without_improvement", "patience_reference_nll", "stopped_early", "stop_reason"):
+                self.assertEqual(full[key], resumed[key], key)
+            self.assertEqual(resumed["epochs_completed"], 2)
+            self.assertEqual(resumed["best_epoch"], 1)
+            self.assertEqual(resumed["completed_epoch"], 4)
+            self.assert_checkpoint_equal(full["final_checkpoint"], resumed["final_checkpoint"])
+            self.assert_checkpoint_equal(full["best_checkpoint"], resumed["best_checkpoint"])
+            self.assert_checkpoint_equal(resumed["best_checkpoint"], root / "first/checkpoints/epoch_1.pt")
+            config = json.loads((root / "resumed/config.json").read_text())
+            self.assertEqual(config["inherited_best_epoch"], 1)
+            # An exhausted checkpoint resumes without training extra epochs.
+            with patch.object(supervised, "evaluate_batches", side_effect=self.validation_sequence(1.1)):
+                stopped = self.run_training(dataset, root / "stopped", epochs=2, patience=3,
+                                            resume=root / "resumed/checkpoints/epoch_4.pt")
+            self.assertEqual(stopped["epochs_completed"], 0)
+            self.assertTrue(stopped["stopped_early"])
+            self.assert_checkpoint_equal(stopped["final_checkpoint"], resumed["final_checkpoint"])
+
+    def test_full_train_evaluation_uses_frozen_initial_and_epoch_weights(self):
+        with tempfile.TemporaryDirectory() as temporary, redirect_stdout(io.StringIO()), \
+                patch.object(supervised, "PolicyValueNet", self.tiny_network):
+            root = Path(temporary)
+            dataset = self.prepare(root)
+            summary = self.run_training(dataset, root / "run", epochs=1, evaluate_train=True)
+            history = json.loads((root / "run/validation.json").read_text())
+            for entry, checkpoint in zip(history, ("initial.pt", "epoch_1.pt")):
+                model = self.tiny_network()
+                model.load_state_dict(torch.load(root / "run/checkpoints" / checkpoint, weights_only=True)["state_dict"])
+                expected = supervised.evaluate_batches(model, human_data.iter_batches(dataset, "train", 5))
+                self.assertEqual(entry["training_evaluation"], expected)
+                self.assertEqual(expected["policy_sample_count"], 16)
+                self.assertEqual(expected["value_sample_count"], 32)
+            self.assertEqual(summary["initial_training_evaluation"], history[0]["training_evaluation"])
+            self.assertEqual(summary["last_training_evaluation"], history[1]["training_evaluation"])
+            self.assertEqual(summary["epochs"][0]["training_evaluation"], history[1]["training_evaluation"])
+
+    def test_old_checkpoint_falls_back_to_starting_model_and_disabled_patience_continues(self):
+        with tempfile.TemporaryDirectory() as temporary, redirect_stdout(io.StringIO()), \
+                patch.object(supervised, "PolicyValueNet", self.tiny_network):
+            root = Path(temporary)
+            dataset = self.prepare(root)
+            with patch.object(supervised, "evaluate_batches", side_effect=self.validation_sequence(1., 2.)):
+                self.run_training(dataset, root / "first", epochs=1)
+            old = torch.load(root / "first/checkpoints/epoch_1.pt", weights_only=True)
+            del old["best_state_dict"]
+            for key in ("best_epoch", "patience", "min_delta", "patience_reference_nll", "epochs_without_improvement"):
+                del old["training_state"][key]
+            torch.save(old, root / "old.pt")
+            with patch.object(supervised, "evaluate_batches", side_effect=self.validation_sequence(2., 3., 4.)):
+                summary = self.run_training(dataset, root / "resumed", epochs=2, resume=root / "old.pt")
+            self.assertEqual(summary["completed_epoch"], 3)
+            self.assertEqual(summary["best_epoch"], 1)
+            self.assertEqual(summary["best_validation_nll"], 2.)
+            self.assertFalse(summary["stopped_early"])
+            self.assertEqual(summary["stop_reason"], "epochs_completed")
+            self.assert_checkpoint_equal(summary["best_checkpoint"], root / "old.pt")
+
+    def test_invalid_early_stopping_parameters_fail_before_creating_run(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for kwargs in ({"patience": -1}, {"patience": .5}, {"patience": True},
+                           {"min_delta": -1.}, {"min_delta": float("nan")}, {"min_delta": float("inf")}):
+                with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
+                    self.run_training(root / "unused", root / "run", **kwargs)
+                self.assertFalse((root / "run").exists())
 
 
 if __name__ == "__main__":

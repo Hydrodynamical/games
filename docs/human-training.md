@@ -46,9 +46,9 @@ The policy loss is cross-entropy against **Hikaru's moves only**. Opponent moves
 
 Each update records pre-update loss, sample counts, full-action policy accuracy, value statistics, and gradient norm. Validation aggregates by example count rather than averaging unequal minibatches. Training/validation policy metrics use the **full action space**, including illegal outputs; the separate MCTS evaluation conditions policy probabilities on legal moves. These are distinct denominators and should not be compared directly.
 
-Run folders are protected against overwrite and retain configuration, dataset manifest hash, source snapshots/hashes, updates, validation measurements, and initial/final/best weights. `best.pt` means the lowest validation policy NLL among the starting model and completed epochs **in that run**, including a continuation run. It does not automatically retrieve a better model from a previous run.
+Run folders are protected against overwrite and retain configuration, dataset manifest hash, source snapshots/hashes, updates, validation measurements, and initial/final/best weights. `best.pt` means the lowest validation policy NLL among the starting model, completed epochs, and any best model embedded in the resumed checkpoint. New epoch checkpoints preserve those best weights and selection metadata, so continuation retains an earlier best model. Older checkpoints without this extra state, including the original one-epoch experiment, use their resumed weights as the starting best candidate.
 
-Every `epoch_N.pt` additionally contains Adam state, RNG states, and an epoch boundary. Resume into a fresh directory with the same dataset and training settings:
+Every `epoch_N.pt` additionally contains Adam state, RNG states, an epoch boundary, and best-model state. Early-stopping counters continue when patience and minimum-delta settings match; changing those settings resets the counter. Resume into a fresh directory with the same dataset and training settings:
 
 ```bash
 PYTHONPATH=chess .venv/bin/python -u -m scr.supervised \
@@ -60,6 +60,26 @@ PYTHONPATH=chess .venv/bin/python -u -m scr.supervised \
 ```
 
 Here `--epochs` is the number of additional complete epochs. Interrupted partial epochs restart from the last completed epoch checkpoint. CPU continuation is tested against uninterrupted training for identical weights. Accelerator RNG states are saved, but exact accelerator numerical reproduction has not been established. The older self-play runner's `--resume` remains weights-only.
+
+### Follow validation across more epochs
+
+Keep the original data split, optimizer, learning rate, and seed when extending a run. For example, continue the recorded one-epoch experiment for up to nine additional epochs:
+
+```bash
+PYTHONPATH=chess .venv/bin/python -u -m scr.supervised \
+  --dataset-dir data/hikaru-blitz-5000/prepared \
+  --run-dir runs/2026-11-06-hikaru-supervised-02 \
+  --resume runs/2026-11-06-hikaru-supervised-01/checkpoints/epoch_1.pt \
+  --epochs 9 --batch-size 128 --hidden 128 --learning-rate 0.001 \
+  --value-weight 1 --seed 1 --threads 4 --device cpu \
+  --patience 3 --min-delta 0 --evaluate-train
+```
+
+Validation policy negative log likelihood (NLL) selects the best model. With `--patience 3`, three consecutive epochs without improvement stop the run cleanly; `--patience 0` disables early stopping. `--min-delta` is the required improvement for resetting patience, while **any** strictly lower validation NLL still saves the best weights. The initial resumed model remains a candidate, so continuing training cannot silently replace it with a worse checkpoint. The final checkpoint is the last trained model and can differ from the best model.
+
+`--evaluate-train` evaluates the full training split without updates at the initial checkpoint and after every epoch. The resulting `training_evaluation` and validation metrics describe the **same frozen weights**. A falling training NLL alongside rising validation NLL is evidence of overfitting on these splits. Batch losses are still logged, but their within-epoch averages mix changing weights and are not the same measurement. Value MSE and move accuracy can move differently from policy NLL; report them separately rather than choosing a checkpoint retrospectively by whichever metric looks best.
+
+Select the best checkpoint before running the test/MCTS comparison. Reusing the earlier 256-position sample makes changes directly comparable, but that sample has already been inspected and is not a new untouched benchmark. Keep its games outside training and use only validation for stopping and checkpoint selection.
 
 ## Compare the same model with and without search
 

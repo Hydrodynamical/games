@@ -1,0 +1,53 @@
+{
+  "recorded_at": "2026-11-06T20:29:33.667771+00:00",
+  "purpose": "Continue the same Hikaru data to inspect validation and overfitting, then compare the selected checkpoint with and without MCTS.",
+  "baseline_run": "runs/2026-11-06-hikaru-supervised-01",
+  "run": "runs/2026-11-06-hikaru-supervised-02",
+  "dataset": "data/hikaru-blitz-5000/prepared",
+  "dataset_manifest_sha256": "cd796ee9ce0a541d07565c0bcccd27c2c91ef01aea88d26231ba0dbe7636829e",
+  "resume": "runs/2026-11-06-hikaru-supervised-01/checkpoints/epoch_1.pt",
+  "resume_sha256": "680e2651c7056e90117fa78524e7d91717e632088cc52e28f92db2252f184b48",
+  "start_epoch": 1,
+  "additional_epochs_maximum": 9,
+  "total_epochs_maximum": 10,
+  "training": {
+    "batch_size": 128,
+    "hidden": 128,
+    "learning_rate": 0.001,
+    "value_weight": 1,
+    "seed": 1,
+    "threads": 4,
+    "device": "cpu"
+  },
+  "selection": {
+    "metric": "validation policy_nll_full_action",
+    "direction": "minimum",
+    "include_starting_checkpoint": true,
+    "patience": 3,
+    "min_delta": 0,
+    "test_used_for_selection": false
+  },
+  "monitoring": {
+    "full_validation_each_epoch": true,
+    "full_training_evaluation_each_epoch": true,
+    "same_checkpoint_train_validation": true
+  },
+  "evaluation": {
+    "split": "test",
+    "max_positions": 256,
+    "sims": 64,
+    "seed": 1,
+    "threads": 4,
+    "match_pairs": 6,
+    "max_plies": 160,
+    "root_noise": false,
+    "move_sampling": false,
+    "search_tree_reuse": false
+  },
+  "interpretation": [
+    "Test sample is reused from the first experiment and is not a new untouched benchmark.",
+    "No learning-rate or architecture changes during this continuation.",
+    "Unfinished matches remain unresolved, distinct from draws.",
+    "MCTS has more computation per move; matches are diagnostics, not an Elo estimate."
+  ]
+}

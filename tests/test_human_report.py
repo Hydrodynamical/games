@@ -35,6 +35,17 @@ elements.previous.listeners.click();assert.match(elements["position-label"].text
 const flatten=e=>e.textContent+e.children.map(flatten).join(" ");
 assert.match(flatten(elements["matches-table"]),/75.0% \(2 games\)/);
 assert.match(flatten(elements["comparison-table"]),/40.0%/);
+if(JSON.parse(payload).config.start_epoch===1){
+ assert.match(flatten(elements["selection-facts"]),/Selected best epoch 2/);
+ assert.match(elements["stopping-note"].textContent,/Stopped early: patience exhausted/);
+ assert.match(elements["continuation-note"].textContent,/Continued from epoch 1/);
+ assert.match(elements["overfit-note"].textContent,/epoch\(s\) 3, 4, 5/);
+ assert.match(flatten(elements["comparison-table"]),/Selected best · epoch 2/);
+ assert.match(flatten(elements["validation-table"]),/1.100/);
+ assert.match(flatten(elements["validation-chart"]),/Train NLL/);
+ assert.match(flatten(elements["validation-chart"]),/Validation NLL/);
+ assert.match(flatten(elements["gap-chart"]),/Validation − train NLL/);
+}
 console.log("Human report DOM checks passed");
 '''
 
@@ -71,6 +82,34 @@ class HumanReportTests(unittest.TestCase):
         (final / "matches.jsonl").write_text("".join(json.dumps(r) + "\n" for r in matches))
         return root
 
+    @classmethod
+    def resumed_fixture(cls, directory):
+        root = cls.fixture(directory)
+        (root / "config.json").write_text(json.dumps({"epochs": 9, "start_epoch": 1, "planned_final_epoch": 10,
+                                                      "patience": 3, "min_delta": .01, "evaluate_train": True}))
+        history, epochs = [], []
+        for epoch, train_nll, validation_nll in [(1, 5.8, 6.), (2, 5.2, 5.5), (3, 4.5, 5.6),
+                                                  (4, 4., 5.8), (5, 3.5, 5.9)]:
+            training = {"policy_nll_full_action": train_nll, "policy_sample_count": 100000,
+                        "value_sample_count": 200000, "policy_top1_full_action": .1 * epoch,
+                        "policy_top5_full_action": .5, "value_mse": .8 - .01 * epoch,
+                        "zero_value_baseline_mse": .9}
+            validation = {"policy_nll_full_action": validation_nll, "policy_sample_count": 10000,
+                          "value_sample_count": 20000, "policy_top1_full_action": .2,
+                          "policy_top5_full_action": .4, "value_mse": .85,
+                          "zero_value_baseline_mse": .91}
+            row = {"epoch": epoch, "step": 2400 * epoch, "training_evaluation": training, "validation": validation}
+            history.append(row)
+            if epoch > 1:
+                epochs.append(dict(row, policy_loss=train_nll + .4, value_loss=.82))
+        (root / "validation.json").write_text(json.dumps(history))
+        (root / "summary.json").write_text(json.dumps({
+            "status": "completed", "best_epoch": 2, "best_validation_nll": 5.5,
+            "completed_epoch": 5, "epochs_completed": 4, "epochs_requested": 9,
+            "epochs_without_improvement": 3, "stopped_early": True, "stop_reason": "patience_exhausted",
+            "epochs": epochs}))
+        return root
+
     def test_empty_and_partial_runs_are_inspectable(self):
         with tempfile.TemporaryDirectory() as directory:
             document, data = read_report(generate_report(directory))
@@ -100,6 +139,57 @@ class HumanReportTests(unittest.TestCase):
             self.assertEqual(data["evaluations"]["final"]["summary"]["heldout"]["all"]["raw_legal_nll"], 2.)
             self.assertIn("not an equal-time comparison", document)
             self.assertIn("all 4,480 action outputs", document)
+
+    def test_resume_metadata_frozen_checkpoint_gaps_and_early_stop_are_retained(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.resumed_fixture(directory)
+            document, data = read_report(generate_report(root))
+            learning = data["learning"]
+            self.assertEqual(learning["start_epoch"], 1)
+            self.assertEqual(learning["planned_final_epoch"], 10)
+            self.assertEqual(learning["best_epoch"], 2)
+            self.assertEqual(learning["best_validation_nll"], 5.5)
+            self.assertEqual(learning["completed_epoch"], 5)
+            self.assertEqual(learning["epochs_completed"], 4)
+            self.assertTrue(learning["stopped_early"])
+            self.assertEqual(learning["stop_reason"], "patience_exhausted")
+            self.assertEqual(learning["divergence_epochs"], [3, 4, 5])
+            third = next(row for row in learning["epochs"] if row["epoch"] == 3)
+            self.assertEqual(third["train_nll"], 4.5)
+            self.assertEqual(third["within_epoch_policy_loss"], 4.9)
+            self.assertAlmostEqual(third["policy_nll_gap"], 1.1)
+            self.assertIn("weights held fixed", document)
+            self.assertIn("not the full training-set evaluation of the final checkpoint", document)
+            self.assertEqual(data["validation"][2]["training_evaluation"]["policy_nll_full_action"], 4.5)
+
+    def test_legacy_logs_do_not_turn_epoch_average_into_train_evaluation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.fixture(directory)
+            (root / "summary.json").write_text(json.dumps({"epochs": [{"epoch": 1, "step": 1,
+                "policy_loss": 5.7, "value_loss": .7, "validation": {"policy_nll_full_action": 6.}}]}))
+            _, data = read_report(generate_report(root))
+            learning = data["learning"]
+            self.assertFalse(learning["train_evaluation_available"])
+            self.assertEqual(learning["best_epoch"], 1)
+            self.assertEqual(learning["best_validation_nll"], 6.)
+            self.assertIsNone(learning["stopped_early"])
+            self.assertEqual(learning["epochs"][-1]["within_epoch_policy_loss"], 5.7)
+            self.assertTrue(all(row["train_nll"] is None and row["policy_nll_gap"] is None
+                                for row in learning["epochs"]))
+
+    def test_epoch_summary_supplies_missing_training_evaluation_without_overriding_history(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.resumed_fixture(directory)
+            path = root / "validation.json"
+            history = json.loads(path.read_text())
+            history[2].pop("training_evaluation")
+            history[2]["validation"]["policy_nll_full_action"] = 5.7
+            path.write_text(json.dumps(history))
+            _, data = read_report(generate_report(root))
+            third = next(row for row in data["learning"]["epochs"] if row["epoch"] == 3)
+            self.assertEqual(third["train_nll"], 4.5)
+            self.assertEqual(third["validation_nll"], 5.7)
+            self.assertAlmostEqual(third["policy_nll_gap"], 1.2)
 
     def test_untrusted_strings_cannot_escape_the_data_script(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -136,6 +226,12 @@ class HumanReportTests(unittest.TestCase):
     def test_board_controls_and_match_score_render(self):
         with tempfile.TemporaryDirectory() as directory:
             path = generate_report(self.fixture(directory))
+            subprocess.run([shutil.which("node"), "-e", DOM_HARNESS, str(path)], check=True, capture_output=True, text=True)
+
+    @unittest.skipUnless(shutil.which("node"), "Node is optional for report DOM regression")
+    def test_resume_selection_and_overfitting_controls_render(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = generate_report(self.resumed_fixture(directory))
             subprocess.run([shutil.which("node"), "-e", DOM_HARNESS, str(path)], check=True, capture_output=True, text=True)
 
 

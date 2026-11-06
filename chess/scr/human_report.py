@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 import tempfile
 
@@ -63,6 +64,64 @@ def _match_totals(records):
                                               if completed else None)}
 
 
+def _finite(value):
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def _learning_view(data):
+    """Keep frozen-checkpoint evaluations separate from within-epoch averages."""
+    config, summary = data["config"], data["summary"]
+    by_epoch = {}
+    summary_epochs = summary.get("epochs") if isinstance(summary.get("epochs"), list) else []
+    # History is authoritative; summary epoch records supply fields omitted by
+    # older/intermediate history writers. Never substitute averaged train loss.
+    for record in summary_epochs + data["validation"]:
+        if not isinstance(record, dict) or not _finite(record.get("epoch")):
+            continue
+        merged = by_epoch.setdefault(record["epoch"], {})
+        for key, value in record.items():
+            if value is not None or key not in merged:
+                merged[key] = value
+    rows = []
+    start = config.get("start_epoch", 0)
+    for epoch, record in sorted(by_epoch.items()):
+        validation = record.get("validation") or {}
+        training = record.get("training_evaluation") or {}
+        validation = validation if isinstance(validation, dict) else {}
+        training = training if isinstance(training, dict) else {}
+        train_nll, val_nll = training.get("policy_nll_full_action"), validation.get("policy_nll_full_action")
+        row = {"epoch": epoch, "step": record.get("step"), "is_start": epoch == start,
+               "training_evaluation": training, "validation": validation,
+               "train_nll": train_nll, "validation_nll": val_nll,
+               "train_top1": training.get("policy_top1_full_action"),
+               "validation_top1": validation.get("policy_top1_full_action"),
+               "train_value_mse": training.get("value_mse"), "validation_value_mse": validation.get("value_mse"),
+               "train_zero_mse": training.get("zero_value_baseline_mse"),
+               "validation_zero_mse": validation.get("zero_value_baseline_mse"),
+               "policy_nll_gap": val_nll - train_nll if _finite(val_nll) and _finite(train_nll) else None,
+               "within_epoch_policy_loss": record.get("policy_loss"),
+               "within_epoch_value_loss": record.get("value_loss")}
+        rows.append(row)
+    measured = [row for row in rows if _finite(row["validation_nll"])]
+    observed_best = min(measured, key=lambda row: row["validation_nll"]) if measured else {}
+    best_epoch = summary.get("best_epoch", observed_best.get("epoch"))
+    best_nll = summary.get("best_validation_nll", observed_best.get("validation_nll"))
+    comparable = [row for row in rows if _finite(row["train_nll"]) and _finite(row["validation_nll"])]
+    divergence_epochs = [later["epoch"] for earlier, later in zip(comparable, comparable[1:])
+                         if later["train_nll"] < earlier["train_nll"]
+                         and later["validation_nll"] > earlier["validation_nll"]]
+    return {"epochs": rows, "start_epoch": start, "best_epoch": best_epoch, "best_validation_nll": best_nll,
+            "planned_final_epoch": config.get("planned_final_epoch",
+                start + config["epochs"] if _finite(start) and _finite(config.get("epochs")) else None),
+            "completed_epoch": summary.get("completed_epoch"),
+            "epochs_completed": summary.get("epochs_completed", len(summary_epochs)),
+            "stopped_early": summary.get("stopped_early"), "stop_reason": summary.get("stop_reason"),
+            "epochs_without_improvement": summary.get("epochs_without_improvement"),
+            "patience": config.get("patience"), "min_delta": config.get("min_delta"),
+            "divergence_epochs": divergence_epochs,
+            "train_evaluation_available": bool(comparable)}
+
+
 def generate_report(run_dir, output=None):
     run_dir = Path(run_dir).resolve()
     if not run_dir.is_dir():
@@ -73,6 +132,7 @@ def generate_report(run_dir, output=None):
             "summary": _read(run_dir / "summary.json", {}, warnings),
             "updates": _jsonl(run_dir / "updates.jsonl", warnings),
             "validation": _read(run_dir / "validation.json", [], warnings), "evaluations": {}, "warnings": warnings}
+    data["learning"] = _learning_view(data)
     for phase in ("initial", "final"):
         directory = run_dir / f"eval-{phase}"
         evaluation = {"summary": _read(directory / "summary.json", {}, warnings),
@@ -109,8 +169,9 @@ TEMPLATE = r'''<!doctype html>
 </style></head><body><main>
 <header><div><div class="eyebrow">Human games / policy learning / MCTS</div><h1>Learning Hikaru's moves, then searching</h1><p id="run-label" class="muted"></p><p id="status"></p></div><button id="download">Download report data</button></header>
 <div id="warnings" class="note hidden section"></div>
+<section class="section panel"><h2>Which checkpoint was selected?</h2><div id="selection-facts" class="facts"></div><p id="continuation-note" class="caption"></p><p id="stopping-note" class="caption"></p></section>
 <section class="section panel"><h2>What the model was taught</h2><p id="supervision"></p><p class="caption">The policy learns only the selected player's own moves. The value head learns observed outcomes from both sides; these include human mistakes, resignations, and clock effects, and are not perfect-play evaluations.</p><div id="dataset-table" class="table-wrap"></div><p id="split-note" class="caption"></p></section>
-<section class="section"><h2>Did training fit human decisions?</h2><p class="muted">Training and full validation metrics below use all 4,480 action outputs. They are separate from the legal-move-conditioned sampled test metrics farther down.</p><div class="grid"><div class="panel"><h3>Sampled training losses</h3><p class="caption">Measured before each update; batches and their targets change.</p><div id="training-chart" class="chart"></div></div><div class="panel"><h3>Full validation move prediction</h3><p class="caption">Entire validation split, target-player turns only. Lower negative log likelihood is better.</p><div id="validation-chart" class="chart"></div></div></div><div id="validation-table" class="panel table-wrap section"></div></section>
+<section class="section"><h2>Is the model learning or overfitting?</h2><p class="muted">Training and full validation metrics below use all 4,480 action outputs. They are separate from the legal-move-conditioned sampled test metrics farther down.</p><p class="caption">Each checkpoint is evaluated on the full training and validation splits with its weights held fixed. A decreasing training NLL alongside a rising validation NLL can indicate overfitting. A train/validation gap alone is not proof: the chronological splits also contain different games.</p><div id="overfit-note" class="note"></div><div class="grid section"><div class="panel"><h3>Move prediction at each checkpoint</h3><p class="caption">Full-action negative log likelihood on target-player turns. Lower is better.</p><div id="validation-chart" class="chart"></div></div><div class="panel"><h3>Checkpoint move agreement</h3><p class="caption">Top-one accuracy across all network actions; higher is better.</p><div id="agreement-chart" class="chart"></div></div><div class="panel"><h3>Validation minus training NLL</h3><p class="caption">Only frozen-checkpoint evaluations enter this gap.</p><div id="gap-chart" class="chart"></div></div><div class="panel"><h3>Outcome prediction at each checkpoint</h3><p class="caption">Both players' observed outcomes; compare each split with its own always-zero baseline.</p><div id="value-fit-chart" class="chart"></div></div></div><div id="validation-table" class="panel table-wrap section"></div><div id="value-fit-table" class="panel table-wrap section"></div><details class="section panel"><summary>Inspect within-epoch optimizer losses</summary><p class="caption">These measurements and epoch averages use changing weights as training proceeds. They are not the full training-set evaluation of the final checkpoint and must not be used to calculate the generalization gap.</p><div id="training-chart" class="chart"></div><div id="epoch-average-table" class="table-wrap"></div></details></section>
 <section class="section panel"><h2>Same model, with and without MCTS</h2><p class="muted">Both modes use the same checkpoint and positions within each evaluation. MCTS gets additional computation; this is not an equal-time comparison.</p><div id="comparison-table" class="table-wrap"></div><p id="sample-note" class="caption"></p><p class="caption">Move agreement measures imitation, not move quality. Raw NLL here is conditioned on legal moves. Search uses deterministic move selection without exploration noise. Search top-five ties use action value then prior.</p></section>
 <section class="section grid"><div class="panel"><h2>Fixed tactical checks</h2><div id="tactical-table" class="table-wrap"></div><p class="caption">Immediate mates and hanging-queen captures; a tiny diagnostic set, not an Elo estimate.</p></div><div class="panel"><h2>Color-paired matches</h2><div id="matches-table" class="table-wrap"></div><p class="caption">MCTS and raw policy swap colors from each fixed opening. Cutoffs are unresolved and excluded from the completed-game score. A small deterministic match set cannot establish a rating.</p></div></section>
 <section class="section panel"><h2>Inspect a held-out decision</h2><p class="caption">Position before Hikaru's recorded move. Gold squares mark that move's start and destination. Every sampled position preserves the preceding game's repetition history.</p><div class="controls"><button id="previous" aria-label="Previous position">←</button><select id="position-select" aria-label="Held-out position"></select><button id="next" aria-label="Next position">→</button></div><div id="position-empty" class="empty hidden">No held-out decisions recorded yet.</div><div id="explorer" class="explorer"><div><div id="board" class="board" role="img" aria-label="Chess position"></div><p id="fen" class="mono"></p></div><div><p id="position-label"></p><div id="position-facts" class="facts"></div><div id="move-table" class="table-wrap section"></div></div></div></section>
@@ -122,21 +183,31 @@ const number=(x,d=3)=>finite(x)?x.toFixed(d):"—",pct=x=>finite(x)?(100*x).toFi
 const text=(tag,value,cls)=>{const e=document.createElement(tag);e.textContent=String(value);if(cls)e.className=cls;return e;};
 function table(id,headers,rows){const host=$(id);host.replaceChildren();if(!rows.length){host.append(text("div","No measurements yet.","empty"));return;}const t=document.createElement("table"),head=document.createElement("thead"),tr=document.createElement("tr");for(const label of headers)tr.append(text("th",label));head.append(tr);t.append(head);const body=document.createElement("tbody");for(const row of rows){const line=document.createElement("tr");for(const cell of row)line.append(text("td",cell??"—"));body.append(line);}t.append(body);host.append(t);}
 $("run-label").textContent=data.run_name+" · "+(data.config.started_at||"Start time not recorded");$("status").append(text("span","Training: "+(data.summary.status||"not recorded"),"badge"),document.createTextNode(" · "+count(data.summary.optimizer_steps)+" optimizer updates"));
+const learning=data.learning,selection=$("selection-facts");for(const[name,value]of[["Starting checkpoint epoch",count(learning.start_epoch)],["Completed epoch / planned limit",count(learning.completed_epoch)+" / "+count(learning.planned_final_epoch)],["Selected best epoch",count(learning.best_epoch)],["Best validation NLL",number(learning.best_validation_nll,4)]]){const cell=text("div","","fact");cell.append(text("span",name),text("strong",value));selection.append(cell);}
+$("continuation-note").textContent=(finite(learning.start_epoch)&&learning.start_epoch>0?"Continued from epoch "+learning.start_epoch+"; epoch labels are absolute across runs. ":"Started from a new initialization. ")+count(learning.epochs_completed)+" additional epochs completed in this run. The selected best checkpoint can precede the last completed epoch.";
+const stoppingState=learning.stopped_early===true?"Stopped early":data.summary.status==="running"?"Monitoring":learning.stopped_early===false?"Did not stop early":"Early-stop status not recorded";
+$("stopping-note").textContent=stoppingState+(learning.stop_reason?": "+String(learning.stop_reason).replaceAll("_"," "):".")+" Patience: "+count(learning.patience)+" epochs; minimum progress: "+number(learning.min_delta,4)+" NLL; epochs without that progress: "+count(learning.epochs_without_improvement)+". Best-checkpoint selection uses the lowest recorded validation NLL; the patience threshold controls when to stop, not which model to retain.";
+$("overfit-note").textContent=!learning.train_evaluation_available?"Full training-set checkpoint evaluations were not recorded. Validation is shown, but a train/validation gap cannot be inferred from within-epoch average losses.":learning.divergence_epochs.length?"At epoch(s) "+learning.divergence_epochs.join(", ")+", training NLL fell while validation NLL rose relative to the preceding evaluated checkpoint. This is a possible overfitting signal; use validation to select the checkpoint and keep the test set for the final comparison.":"No adjacent recorded checkpoints show training NLL falling while validation NLL rises. This does not establish the absence of overfitting; inspect the curves and keep the final test comparison separate from checkpoint selection.";
 if(data.warnings.length){$("warnings").classList.remove("hidden");$("warnings").textContent=data.warnings.join("\n");}
 $("supervision").textContent=count(data.dataset.accepted_games)+" accepted games · "+(data.config.policy_supervision||data.dataset.policy_supervision||"target-player policy supervision")+".";
 table("dataset-table",["Split","Games","All value positions","Player policy positions","UTC date range"],Object.entries(data.dataset.splits||{}).map(([name,s])=>[name,count(s.games),count(s.positions),count(s.policy_positions),date(s.first_end_time)+" → "+date(s.last_end_time)]));
 $("split-note").textContent="Split method: "+(data.dataset.split?.strategy||"not recorded")+". Whole games and UTC dates stay together. Rejected input records: "+JSON.stringify(data.dataset.rejected_counts||{});
-function chart(id,rows,series){const host=$(id);host.replaceChildren();const points=rows.filter(r=>finite(r.step)&&series.some(s=>finite(r[s.key])));if(!points.length){host.append(text("div","No measurements yet.","empty"));return;}const width=520,height=240,pad={l:45,r:14,t:15,b:32},xmin=Math.min(...points.map(r=>r.step)),xmax=Math.max(xmin+1,...points.map(r=>r.step)),ymax=Math.max(.01,...points.flatMap(r=>series.map(s=>finite(r[s.key])?r[s.key]:0)))*1.08;
-const xp=x=>pad.l+(x-xmin)/(xmax-xmin)*(width-pad.l-pad.r),yp=y=>height-pad.b-y/ymax*(height-pad.t-pad.b),ns="http://www.w3.org/2000/svg",svg=document.createElementNS(ns,"svg");svg.setAttribute("viewBox",`0 0 ${width} ${height}`);svg.setAttribute("role","img");svg.setAttribute("aria-label",series.map(s=>s.label).join(" and ")+" by optimizer step");
+function chart(id,rows,series,{xKey="step",xLabel="Optimizer step",signed=false,percentage=false}={}){const host=$(id);host.replaceChildren();const points=rows.filter(r=>finite(r[xKey])&&series.some(s=>finite(r[s.key])));if(!points.length){host.append(text("div","No measurements yet.","empty"));return;}const width=520,height=240,pad={l:50,r:14,t:15,b:32};let xmin=Infinity,xmax=-Infinity,ymin=0,ymax=.01;for(const row of points){xmin=Math.min(xmin,row[xKey]);xmax=Math.max(xmax,row[xKey]);for(const s of series)if(finite(row[s.key])){if(signed)ymin=Math.min(ymin,row[s.key]);ymax=Math.max(ymax,row[s.key]);}}xmax=Math.max(xmin+1,xmax);ymin*=1.08;ymax*=1.08;const active=series.filter(s=>points.some(r=>finite(r[s.key])));
+const xp=x=>pad.l+(x-xmin)/(xmax-xmin)*(width-pad.l-pad.r),yp=y=>height-pad.b-(y-ymin)/(ymax-ymin)*(height-pad.t-pad.b),ns="http://www.w3.org/2000/svg",svg=document.createElementNS(ns,"svg");svg.setAttribute("viewBox",`0 0 ${width} ${height}`);svg.setAttribute("role","img");svg.setAttribute("aria-label",active.map(s=>s.label).join(" and ")+" by "+xLabel.toLowerCase());
 function el(tag,attrs,label){const e=document.createElementNS(ns,tag);for(const[k,v]of Object.entries(attrs))e.setAttribute(k,String(v));if(label!==undefined)e.textContent=label;svg.append(e);return e;}
-for(let i=0;i<=4;i++){const y=ymax*i/4;el("line",{x1:pad.l,x2:width-pad.r,y1:yp(y),y2:yp(y),stroke:"#dce5e9"});el("text",{x:pad.l-8,y:yp(y)+4,"text-anchor":"end","font-size":11,fill:"#5a6e7b"},y.toFixed(1));}
+for(let i=0;i<=4;i++){const y=ymin+(ymax-ymin)*i/4;el("line",{x1:pad.l,x2:width-pad.r,y1:yp(y),y2:yp(y),stroke:"#dce5e9"});el("text",{x:pad.l-8,y:yp(y)+4,"text-anchor":"end","font-size":11,fill:"#5a6e7b"},percentage?pct(y):y.toFixed(signed?2:1));}
 for(const x of [xmin,Math.round((xmin+xmax)/2),xmax])el("text",{x:xp(x),y:height-10,"text-anchor":"middle","font-size":11,fill:"#5a6e7b"},String(x));
-series.forEach(s=>el("polyline",{points:points.filter(r=>finite(r[s.key])).map(r=>xp(r.step)+","+yp(r[s.key])).join(" "),fill:"none",stroke:s.color,"stroke-width":2}));host.append(svg);const legend=text("div","","legend");for(const s of series){const item=text("span",s.label);item.style.setProperty("--series",s.color);legend.append(item);}host.append(legend,text("p","Horizontal axis: optimizer step","caption"));}
+active.forEach(s=>{const valid=points.filter(r=>finite(r[s.key]));el("polyline",{points:valid.map(r=>xp(r[xKey])+","+yp(r[s.key])).join(" "),fill:"none",stroke:s.color,"stroke-width":2,"stroke-dasharray":s.dash||"none"});if(valid.length<50)valid.forEach(r=>el("circle",{cx:xp(r[xKey]),cy:yp(r[s.key]),r:3,fill:s.color}));});host.append(svg);const legend=text("div","","legend");for(const s of active){const item=text("span",s.label);item.style.setProperty("--series",s.color);legend.append(item);}host.append(legend,text("p","Horizontal axis: "+xLabel.toLowerCase(),"caption"));}
 chart("training-chart",data.updates,[{key:"policy_loss",label:"Policy cross-entropy",color:"#247a9b"},{key:"value_loss",label:"Value MSE",color:"#ba7028"}]);
-const validation=data.validation.filter(r=>r&&typeof r==="object").map(r=>({epoch:r.epoch,step:r.step,...r.validation}));
-chart("validation-chart",validation,[{key:"policy_nll_full_action",label:"Validation full-action NLL",color:"#247a9b"}]);
-table("validation-table",["Epoch","Step","Policy examples","Top-one (all actions)","Top-five (all actions)","NLL (all actions)","Value MSE","Always-zero MSE"],validation.map(r=>[r.epoch,r.step,count(r.policy_sample_count),pct(r.policy_top1_full_action),pct(r.policy_top5_full_action),number(r.policy_nll_full_action),number(r.value_mse),number(r.zero_value_baseline_mse)]));
-const phases=["initial","final"],label=p=>p==="initial"?"Initial":"Trained",comparisons=[];
+const epochs=learning.epochs,epochLabel=r=>String(r.epoch)+(r.is_start?" · start":"")+(r.epoch===learning.best_epoch?" · best":""),epochAxis={xKey:"epoch",xLabel:"Absolute epoch"};
+chart("validation-chart",epochs,[{key:"train_nll",label:"Train NLL",color:"#247a9b"},{key:"validation_nll",label:"Validation NLL",color:"#ba7028",dash:"6 3"}],epochAxis);
+chart("agreement-chart",epochs,[{key:"train_top1",label:"Train top-one",color:"#247a9b"},{key:"validation_top1",label:"Validation top-one",color:"#ba7028",dash:"6 3"}],{...epochAxis,percentage:true});
+chart("gap-chart",epochs,[{key:"policy_nll_gap",label:"Validation − train NLL",color:"#795a95"}],{...epochAxis,signed:true});
+chart("value-fit-chart",epochs,[{key:"train_value_mse",label:"Train value MSE",color:"#247a9b"},{key:"validation_value_mse",label:"Validation value MSE",color:"#ba7028",dash:"6 3"},{key:"train_zero_mse",label:"Train always-zero",color:"#708899",dash:"2 4"},{key:"validation_zero_mse",label:"Validation always-zero",color:"#9a8571",dash:"2 4"}],epochAxis);
+table("validation-table",["Absolute epoch","Step","Train policy examples","Validation policy examples","Train NLL","Validation NLL","NLL gap","Train top-one","Validation top-one","Train top-five","Validation top-five"],epochs.map(r=>[epochLabel(r),r.step,count(r.training_evaluation.policy_sample_count),count(r.validation.policy_sample_count),number(r.train_nll),number(r.validation_nll),number(r.policy_nll_gap),pct(r.train_top1),pct(r.validation_top1),pct(r.training_evaluation.policy_top5_full_action),pct(r.validation.policy_top5_full_action)]));
+table("value-fit-table",["Absolute epoch","Train value examples","Validation value examples","Train value MSE","Validation value MSE","Train always-zero MSE","Validation always-zero MSE"],epochs.map(r=>[epochLabel(r),count(r.training_evaluation.value_sample_count),count(r.validation.value_sample_count),number(r.train_value_mse),number(r.validation_value_mse),number(r.train_zero_mse),number(r.validation_zero_mse)]));
+table("epoch-average-table",["Epoch","Within-epoch mean policy loss","Within-epoch mean value loss","Checkpoint train NLL","Checkpoint train value MSE"],epochs.filter(r=>finite(r.within_epoch_policy_loss)||finite(r.within_epoch_value_loss)).map(r=>[r.epoch,number(r.within_epoch_policy_loss),number(r.within_epoch_value_loss),number(r.train_nll),number(r.train_value_mse)]));
+const phases=["initial","final"],label=p=>p==="initial"?(learning.start_epoch>0?"Before continuation":"Initial")+" · epoch "+count(learning.start_epoch):"Selected best · epoch "+count(learning.best_epoch),comparisons=[];
 for(const phase of phases){const summary=data.evaluations[phase].summary;for(const subset of ["all","opening","later"]){const h=summary.heldout?.[subset];if(h?.positions)comparisons.push([label(phase)+" · "+subset,count(h.positions),pct(h.raw_top1),pct(h.search_top1),pct(h.raw_top5),pct(h.search_top5),number(h.raw_legal_nll),pct(h.move_change_fraction)]);}}
 table("comparison-table",["Checkpoint / sample","Positions","Raw match","MCTS match","Raw top-five","MCTS top-five","Raw legal NLL","Move changed"],comparisons);
 $("sample-note").textContent="Initial/final sampled positions match: "+(data.initial_final_samples_match===null?"awaiting both evaluations":data.initial_final_samples_match?"yes":"no")+". Opening = first 20 plies. Final sample spans "+count(data.evaluations.final.summary.sampling?.sampled_games)+" games; excluded terminal positions: "+JSON.stringify(data.evaluations.final.summary.sampling?.engine_terminal_exclusions||{})+".";

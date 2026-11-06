@@ -131,17 +131,27 @@ def evaluate_batches(model, batches, device='cpu'):
 
 def train_supervised(dataset_dir, run_dir, *, epochs=1, batch_size=128, hidden=128,
                      learning_rate=.001, value_weight=1.0, seed=1, threads=4,
-                     device='cpu', resume=None):
+                     device='cpu', resume=None, patience=0, min_delta=0.0,
+                     evaluate_train=False):
     """Run full streaming epochs and checkpoint at every completed epoch.
 
     Resume files contain optimizer/RNG state and an epoch boundary. A fresh
     output directory is required; an interrupted partial epoch can be replayed
     from its last complete checkpoint without pretending those steps survived.
+    ``epochs`` is the maximum number of additional epochs. ``patience=0``
+    disables early stopping. Otherwise stop after that many epochs without a
+    validation policy-NLL improvement larger than ``min_delta``. The absolute
+    lowest NLL always selects best.pt, even when a decrease is below min_delta.
+    Full train-split evaluation is optional and uses frozen epoch-end weights.
     """
     if min(epochs, batch_size, hidden, threads) < 1:
         raise ValueError('Epochs, batch size, hidden width and threads must be positive')
     if not math.isfinite(learning_rate) or learning_rate <= 0 or not math.isfinite(value_weight) or value_weight < 0:
         raise ValueError('Invalid learning rate or value weight')
+    if not isinstance(patience, int) or isinstance(patience, bool) or patience < 0:
+        raise ValueError('patience must be a nonnegative integer')
+    if not math.isfinite(min_delta) or min_delta < 0:
+        raise ValueError('min_delta must be finite and nonnegative')
     dataset_dir, run_dir = Path(dataset_dir).resolve(), Path(run_dir).resolve()
     manifest = load_manifest(dataset_dir)
     manifest_hash = sha256(dataset_dir / 'manifest.json')
@@ -156,6 +166,7 @@ def train_supervised(dataset_dir, run_dir, *, epochs=1, batch_size=128, hidden=1
     model = PolicyValueNet(hidden=hidden).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     start_epoch = step = 0
+    resume_state, inherited_best_state = {}, None
     if resume:
         saved = torch.load(resume, map_location='cpu', weights_only=True)
         state = saved['training_state']
@@ -173,6 +184,8 @@ def train_supervised(dataset_dir, run_dir, *, epochs=1, batch_size=128, hidden=1
         elif torch.device(device).type == 'mps':
             torch.mps.set_rng_state(saved['mps_rng_state'])
         start_epoch, step = state['completed_epoch'], state['step']
+        resume_state = state
+        inherited_best_state = saved.get('best_state_dict')
     source_root = Path(__file__).resolve().parents[2]
     source_hashes = {}
     for path in sorted((source_root / 'chess/scr').glob('*.py')):
@@ -188,6 +201,8 @@ def train_supervised(dataset_dir, run_dir, *, epochs=1, batch_size=128, hidden=1
         commit, dirty = None, None
     config = {'dataset_dir': str(dataset_dir), 'dataset_manifest_sha256': manifest_hash,
               'run_dir': str(run_dir), 'epochs': epochs, 'start_epoch': start_epoch,
+              'planned_final_epoch': start_epoch + epochs,
+              'patience': patience, 'min_delta': min_delta, 'evaluate_train': evaluate_train,
               'batch_size': batch_size, 'hidden': hidden, 'learning_rate': learning_rate,
               'value_weight': value_weight, 'seed': seed, 'threads': threads, 'device': device,
               'resume': str(resume) if resume else None, 'torch_version': str(torch.__version__),
@@ -195,7 +210,9 @@ def train_supervised(dataset_dir, run_dir, *, epochs=1, batch_size=128, hidden=1
               'git_commit': commit, 'git_dirty': dirty, 'source_sha256': source_hashes,
               'started_at': datetime.now(timezone.utc).isoformat(),
               'policy_supervision': 'target player only; cross entropy over all actions',
-              'checkpoint_selection': 'best validation policy NLL among initial model and completed epochs in this run',
+              'checkpoint_selection': 'absolute minimum validation policy NLL among initial model, completed epochs, and inherited best when available',
+              'inherited_best_epoch': resume_state.get('best_epoch') if inherited_best_state is not None else None,
+              'early_stopping': 'patience counts epochs without a decrease greater than min_delta from the last significant improvement',
               'value_supervision': 'observed PGN outcome from each side to move; both players',
               'value_limitations': 'human outcomes include resignation/timeouts and future mistakes; not minimax labels'}
     write_json(run_dir / 'config.json', config)
@@ -204,18 +221,42 @@ def train_supervised(dataset_dir, run_dir, *, epochs=1, batch_size=128, hidden=1
     initial_validation = evaluate_batches(model, iter_batches(dataset_dir, 'validation', batch_size), device)
     if not initial_validation['policy_sample_count']:
         raise ValueError('Validation split has no target-player positions')
+    initial_training = (evaluate_batches(model, iter_batches(dataset_dir, 'train', batch_size), device)
+                        if evaluate_train else None)
     # A worse epoch must not displace the starting model as the best candidate.
     best_nll = initial_validation['policy_nll_full_action']
-    save_model(model, checkpoints / 'best.pt')
-    history = [{'epoch': start_epoch, 'step': step, 'validation': initial_validation}]
+    best_epoch = start_epoch
+    best_state = {name: tensor.detach().cpu().clone() for name, tensor in model.state_dict().items()}
+    if inherited_best_state is not None and resume_state['best_validation_nll'] <= best_nll:
+        best_nll = resume_state['best_validation_nll']
+        best_epoch = resume_state['best_epoch']
+        best_state = inherited_best_state
+    torch.save({'format_version': 2, 'state_dict': best_state}, checkpoints / 'best.pt')
+    patience_reference = initial_validation['policy_nll_full_action']
+    epochs_without_improvement = 0
+    if (resume_state.get('patience') == patience and resume_state.get('min_delta') == min_delta
+            and 'patience_reference_nll' in resume_state):
+        patience_reference = resume_state['patience_reference_nll']
+        epochs_without_improvement = resume_state['epochs_without_improvement']
+    history = [{'epoch': start_epoch, 'step': step, 'validation': initial_validation,
+                'training_evaluation': initial_training}]
     write_json(run_dir / 'validation.json', history)
     summary = {'status': 'running', 'completed_epoch': start_epoch, 'optimizer_steps': step,
-               'initial_validation': initial_validation, 'epochs': [], 'checkpoints': []}
+               'initial_validation': initial_validation, 'initial_training_evaluation': initial_training,
+               'last_validation': initial_validation, 'last_training_evaluation': initial_training,
+               'epochs': [], 'checkpoints': [], 'epochs_requested': epochs, 'epochs_completed': 0,
+               'planned_final_epoch': start_epoch + epochs, 'best_epoch': best_epoch,
+               'best_validation_nll': best_nll, 'epochs_without_improvement': epochs_without_improvement,
+               'patience_reference_nll': patience_reference, 'stopped_early': False, 'stop_reason': None}
     write_json(run_dir / 'summary.json', summary)
     print(f'Initial validation: {initial_validation}', flush=True)
     started = time.monotonic()
     try:
-        for epoch in range(start_epoch + 1, start_epoch + epochs + 1):
+        already_stopped = bool(patience and epochs_without_improvement >= patience)
+        epoch_range = () if already_stopped else range(start_epoch + 1, start_epoch + epochs + 1)
+        if already_stopped:
+            summary.update(stopped_early=True, stop_reason='patience_exhausted')
+        for epoch in epoch_range:
             epoch_started = time.monotonic()
             policy_count = value_count = 0
             policy_sum = value_sum = 0.0
@@ -237,15 +278,30 @@ def train_supervised(dataset_dir, run_dir, *, epochs=1, batch_size=128, hidden=1
             if not policy_count:
                 raise ValueError('Training split has no target-player positions')
             validation = evaluate_batches(model, iter_batches(dataset_dir, 'validation', batch_size), device)
-            history.append({'epoch': epoch, 'step': step, 'validation': validation})
+            training_evaluation = (evaluate_batches(model, iter_batches(dataset_dir, 'train', batch_size), device)
+                                   if evaluate_train else None)
+            history.append({'epoch': epoch, 'step': step, 'validation': validation,
+                            'training_evaluation': training_evaluation})
             write_json(run_dir / 'validation.json', history)
-            improved = validation['policy_nll_full_action'] < best_nll
-            best_nll = min(best_nll, validation['policy_nll_full_action'])
+            validation_nll = validation['policy_nll_full_action']
+            improved = validation_nll < best_nll
+            if improved:
+                best_nll, best_epoch = validation_nll, epoch
+                best_state = {name: tensor.detach().cpu().clone() for name, tensor in model.state_dict().items()}
+            if validation_nll < patience_reference - min_delta:
+                patience_reference = validation_nll
+                epochs_without_improvement = 0
+            else:
+                epochs_without_improvement += 1
+            should_stop = bool(patience and epochs_without_improvement >= patience)
             state = {key: config[key] for key in ('dataset_manifest_sha256', 'batch_size', 'hidden',
                                                  'seed', 'value_weight', 'learning_rate', 'threads', 'device')}
-            state.update(completed_epoch=epoch, step=step, best_validation_nll=best_nll)
+            state.update(completed_epoch=epoch, step=step, best_validation_nll=best_nll, best_epoch=best_epoch,
+                         patience=patience, min_delta=min_delta, patience_reference_nll=patience_reference,
+                         epochs_without_improvement=epochs_without_improvement)
             checkpoint = checkpoints / f'epoch_{epoch}.pt'
             snapshot = {'format_version': 2, 'state_dict': model.state_dict(),
+                        'best_state_dict': best_state,
                         'optimizer_state_dict': optimizer.state_dict(), 'training_state': state,
                         'torch_rng_state': torch.get_rng_state(), 'python_rng_state': random.getstate()}
             if torch.device(device).type == 'cuda':
@@ -258,18 +314,33 @@ def train_supervised(dataset_dir, run_dir, *, epochs=1, batch_size=128, hidden=1
             epoch_record = {'epoch': epoch, 'step': step, 'policy_samples': policy_count,
                             'value_samples': value_count, 'policy_loss': policy_sum / policy_count,
                             'value_loss': value_sum / value_count, 'validation': validation,
+                            'training_evaluation': training_evaluation, 'best_epoch': best_epoch,
+                            'best_validation_nll': best_nll,
+                            'epochs_without_improvement': epochs_without_improvement,
                             'duration_seconds': time.monotonic() - epoch_started}
             summary['epochs'].append(epoch_record)
             summary['checkpoints'].append(str(checkpoint))
             summary.update(completed_epoch=epoch, optimizer_steps=step, last_validation=validation,
+                           last_training_evaluation=training_evaluation, epochs_completed=len(summary['epochs']),
+                           best_epoch=best_epoch, best_validation_nll=best_nll,
+                           epochs_without_improvement=epochs_without_improvement,
+                           patience_reference_nll=patience_reference,
                            duration_seconds=time.monotonic() - started)
+            if should_stop:
+                summary.update(stopped_early=epoch < start_epoch + epochs, stop_reason='patience_exhausted')
             write_json(run_dir / 'summary.json', summary)
             print(f'Completed epoch {epoch}: {validation}', flush=True)
+            if should_stop:
+                print(f'Early stopping: {epochs_without_improvement} epochs without sufficient validation improvement; '
+                      f'best epoch {best_epoch}, NLL={best_nll:.6f}', flush=True)
+                break
         save_model(model, checkpoints / 'final.pt')
         summary.update(status='completed', final_checkpoint=str(checkpoints / 'final.pt'),
                        best_checkpoint=str(checkpoints / 'best.pt') if (checkpoints / 'best.pt').exists() else None,
                        completed_at=datetime.now(timezone.utc).isoformat(),
                        duration_seconds=time.monotonic() - started)
+        if summary['stop_reason'] is None:
+            summary['stop_reason'] = 'epochs_completed'
         write_json(run_dir / 'summary.json', summary)
     except BaseException as exc:
         summary.update(status='interrupted' if isinstance(exc, KeyboardInterrupt) else 'failed',
@@ -293,6 +364,9 @@ def main(argv=None):
     parser.add_argument('--threads', type=int, default=4)
     parser.add_argument('--device', choices=('cpu', 'mps', 'cuda'), default='cpu')
     parser.add_argument('--resume', type=Path)
+    parser.add_argument('--patience', type=int, default=0, help='Epochs without sufficient validation improvement before stopping; 0 disables')
+    parser.add_argument('--min-delta', type=float, default=0., help='Minimum validation policy-NLL decrease that resets patience')
+    parser.add_argument('--evaluate-train', action='store_true', help='Evaluate the full train split at the initial and epoch-end checkpoints')
     args = vars(parser.parse_args(argv))
     print(json.dumps(train_supervised(**args), indent=2))
 
