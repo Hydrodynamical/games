@@ -1,52 +1,46 @@
-""" Generate a graphics test of tkinter for the module chess_engine."""
-import torch
+"""Play against MCTS in Tk; optionally provide a trained neural checkpoint."""
+from __future__ import annotations
 
-from scr.mcts import mcts_search
-from scr.rl_interface import PolicyValueNet, policy_distribution, critic_value
+import argparse
+import math
+import os
+from queue import Empty, Queue
+import random
+from threading import Thread
 
-import tkinter as tk                    # for the GUI
-from scr.chess_engine import GameState  # our chess engine module
-from PIL import Image, ImageTk          # for image manipulation and use in tkinter
-import os                               # for accessing image files found in a different folder
+import tkinter as tk
+from tkinter import simpledialog
+from PIL import Image, ImageTk
 
-WINDOW_NAME = "Chess"           # set window name
-SQUARE_LENGTH = 60              # set square length
-game = GameState()              # create instance of GameState class
-AI_ENABLED = True          # press 't' to toggle
-AI_PLAYS = "both"             # set to "w" or "b" or "both"
-AI_USE_MCTS = True         # press 'm' to toggle
-AI_SIMS = 100              # MCTS sims per move
-AI_TEMP = 0.0              # 0 = deterministic
+from scr.mcts import mcts_search, best_move
+from scr.chess_engine import GameState
 
-# ----------------------------
-# Model setup (loads once)
-# ----------------------------
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--model", help="Optional version-2 neural checkpoint")
+parser.add_argument("--you", choices=("w", "b"), default="w")
+parser.add_argument("--sims", type=int, default=200)
+parser.add_argument("--seconds", type=float, default=2.0, help="Maximum search seconds per move")
+args = parser.parse_args()
+if args.sims < 0 or not math.isfinite(args.seconds) or args.seconds < 0:
+    parser.error("--sims and --seconds must be nonnegative and finite")
 
-
-########################################################################################################
-MODEL_PATH = "chess/scr/policy_value_net_285.pt"
-########################################################################################################
-
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-
-try:
-    _state = torch.load(MODEL_PATH, map_location=DEVICE)
-
-    # If you saved a full model (rare here), _state will be an nn.Module.
-    # If you saved a state_dict (your case), it will be an OrderedDict/dict.
-    if hasattr(_state, "eval"):
-        model = _state
-    else:
-        model = PolicyValueNet()
-        model.load_state_dict(_state)
-
-    model.to(DEVICE)
-    model.eval()
-    print(f"Loaded model from {MODEL_PATH} on {DEVICE}")
-except Exception as e:
-    model = None
-    print(f"WARNING: Could not load model at {MODEL_PATH}: {e}")
-# ----------------------------
+WINDOW_NAME = "Chess — MCTS"
+SQUARE_LENGTH = 60
+game = GameState()
+AI_ENABLED = True
+AI_PLAYS = "b" if args.you == "w" else "w"
+AI_USE_MCTS = True
+AI_SIMS = args.sims
+AI_TEMP = 0.0
+AI_THINKING = False
+ai_results = Queue()
+model = None
+if args.model:
+    from scr.rl_interface import load_model, policy_distribution, critic_value
+    model = load_model(args.model)
+    print(f"Loaded neural model from {args.model}")
+else:
+    print("Using MCTS with the built-in evaluation; no neural checkpoint required.")
 
 root = tk.Tk()                  # create instance of the Tk class
 root.title(WINDOW_NAME)         # sets title of the window
@@ -64,7 +58,7 @@ board_frm.grid(row = 0, column=0)
 info_frm.grid(row=0, column=1)
 
 # add textbox into info_frame
-text_box = tk.Label(info_frm, text = "White goes first.\n\n Left click to move.\n\nRight click to see available moves.", font= ("Courier", 12))
+text_box = tk.Label(info_frm, text = f"You play {args.you}.\n\nLeft click to move.\nRight click for legal moves.\nu: undo | a: AI move | t: toggle AI", font= ("Courier", 12))
 text_box.pack()
 
 # ----------------------------
@@ -200,6 +194,8 @@ def update_text_info(game, show_board_string = False, checkmate = False, stalema
 
     elif stalemate:
         info_text = info_text + "\nStalemate!\n\n"
+    elif game.is_draw():
+        info_text += f"\nDraw: {game.draw_reason()}\n"
 
     if extra_text:
         info_text += "\n" + extra_text
@@ -236,6 +232,8 @@ def reset_background(board_dimension = 8):
                 canvas_grid[row][col].config(bg = "#d88c44")
 
 def _move_to_str(mv) -> str:
+    if hasattr(mv, "uci"):
+        return mv.uci()
     if hasattr(mv, "start") and hasattr(mv, "end"):
         pm = getattr(mv, "piece_moved", "")
         pc = getattr(mv, "piece_captured", "")
@@ -245,27 +243,24 @@ def _move_to_str(mv) -> str:
 
 
 def _pick_from_move_probs(pi_moves: dict, temperature: float = 0.0):
-    """Pick a move from {Move: prob}. temperature=0 -> argmax; else sample with p^(1/T)."""
     if not pi_moves:
         return None
-
-    moves = list(pi_moves.keys())
-    probs = torch.tensor([float(pi_moves[m]) for m in moves], dtype=torch.float32)
-
-    if temperature == 0.0:
-        return moves[int(torch.argmax(probs).item())]
-
-    probs = torch.clamp(probs, min=1e-12)
-    probs = probs ** (1.0 / float(temperature))
-    probs = probs / probs.sum()
-    idx = int(torch.multinomial(probs, 1).item())
-    return moves[idx]
+    if temperature == 0:
+        return max(pi_moves, key=pi_moves.get)
+    maximum = max(pi_moves.values())
+    weights = [math.exp((math.log(p) - math.log(maximum)) / temperature) if p else 0.0
+               for p in pi_moves.values()]
+    return random.choices(list(pi_moves), weights=weights, k=1)[0]
 
 
 def on_left_click(event):
     """This function tells the GUI what to do with left clicks
     It includes the logic to handle clicking the board to move pieces"""
     
+    if AI_THINKING or game.is_checkmate() or game.is_stalemate() or game.is_draw():
+        return
+    if AI_ENABLED and game.player == AI_PLAYS:
+        return
     # keep track of click coordinates
     two_click_history_L.append(find_coords(event)) 
 
@@ -276,11 +271,28 @@ def on_left_click(event):
     # check if two clicks have been registered
     if len(two_click_history_L) == 2:
         if game.is_legal_move(two_click_history_L):             # check if valid chess move
-            mv = game.move_from_pair(two_click_history_L)       # create Move object from move_pair   
+            start, end = map(tuple, two_click_history_L)
+            candidates = [mv for mv in game.get_all_legal_moves(game.player, as_moves=True)
+                          if mv.start == start and mv.end == end]
+            mv = candidates[0]
+            if len(candidates) > 1:
+                choice = simpledialog.askstring("Promotion", "Promote to Q, R, B or N:", initialvalue="Q", parent=root)
+                if choice is None:
+                    reset_border(two_click_history_L[0])
+                    two_click_history_L.clear()
+                    return
+                promotion = choice.strip().upper()
+                selected = next((move for move in candidates if move.promotion == promotion), None)
+                if selected is None:
+                    reset_border(two_click_history_L[0])
+                    two_click_history_L.clear()
+                    return
+                mv = selected
             game.make_move(mv)                                  # make the move in the game state
             clear_photos(two_click_history_L)                   # clear the images from canvas_grid
             draw_pieces(board=game.board)                       # draw new positions on canvas_grid
-            update_text_info(game, checkmate=game.is_checkmate(), stalemate=game.is_stalemate())    # update text info about the game
+            update_text_info(game, checkmate=game.is_checkmate(), stalemate=game.is_stalemate())
+            root.after(100, ai_make_move)
         reset_border(two_click_history_L[0])                    # reset border even if move isn't valid
         reset_background()                                      # reset the background of all squares
         two_click_history_L.clear()                             # clear click history after two clicks
@@ -309,10 +321,20 @@ def on_right_click(event):
 
 # NEW: bind 'u' and 'Backspace' to undo move
 def undo_move(event=None):
+    if AI_THINKING:
+        return
+    for history in (two_click_history_L, two_click_history_R, two_click_history_M):
+        for square in history:
+            reset_border(square)
+        history.clear()
     game.undo_last_move()
+    if AI_ENABLED and game.player == AI_PLAYS:
+        game.undo_last_move()
     reset_background()
     draw_pieces(board=game.board)
     update_text_info(game, checkmate=game.is_checkmate(), stalemate=game.is_stalemate())
+    if AI_ENABLED and game.player == AI_PLAYS:
+        root.after(100, ai_make_move)
 
 root.bind("<u>", undo_move)             # press 'u' to undo
 root.bind("<BackSpace>", undo_move)  # press 'Backspace' to undo
@@ -331,78 +353,69 @@ for canvas_row in canvas_grid:
 
 
 def ai_make_move(event=None):
-    """Have the model play one move for the current player (if enabled)."""
-    global game
-
-    if model is None:
-        print("No model loaded.")
+    """Run search in a worker so the board remains responsive."""
+    global AI_THINKING
+    if AI_THINKING or not AI_ENABLED or AI_PLAYS not in ("both", game.player):
         return
-
-    if not AI_ENABLED:
+    if game.is_checkmate() or game.is_stalemate() or game.is_draw():
         return
-
-    if AI_PLAYS not in ("both", game.player):
-        return
-
-    # terminal?
-    if game.is_checkmate() or game.is_stalemate():
-        return
-
     reset_background()
+    AI_THINKING = True
+    snapshot = game.fast_copy_for_search()
+    set_ai_info("MCTS is thinking…")
 
-    # Evaluate current position (optional but useful to display)
-    v_before = None
+    def search():
+        try:
+            value = float(critic_value(model, snapshot)) if model is not None else None
+            if AI_USE_MCTS or model is None:
+                probabilities, search_root = mcts_search(
+                    snapshot, model, num_sims=AI_SIMS, time_limit=args.seconds,
+                    show_progress=False, return_root=True,
+                )
+            else:
+                probabilities = policy_distribution(model, snapshot)
+                search_root = None
+            ai_results.put((probabilities, value, search_root, None))
+        except Exception as exc:
+            ai_results.put(({}, None, None, str(exc)))
+
+    Thread(target=search, daemon=True).start()
+    root.after(30, finish_ai_move)
+
+
+def finish_ai_move():
+    global AI_THINKING
     try:
-        v_before = float(critic_value(model, game))
-    except Exception:
-        v_before = None
-
-    # Choose move
-    if AI_USE_MCTS:
-        # NOTE: show_progress=True can spam stdout / feel "laggy" in GUI usage
-        pi_moves = mcts_search(game, model, num_sims=AI_SIMS, show_progress=False)
-    else:
-        pi_moves = policy_distribution(model, game)
-
-    mv = _pick_from_move_probs(pi_moves, temperature=AI_TEMP)
+        pi_moves, value, search_root, error = ai_results.get_nowait()
+    except Empty:
+        root.after(30, finish_ai_move)
+        return
+    AI_THINKING = False
+    if error:
+        set_ai_info(f"Search failed: {error}")
+        return
+    mv = best_move(pi_moves, search_root) if AI_TEMP == 0 else _pick_from_move_probs(pi_moves, AI_TEMP)
     if mv is None:
         return
-
-    # Build top-k candidate list for display (before applying move)
-    topk = 10
-    top = sorted(pi_moves.items(), key=lambda kv: float(kv[1]), reverse=True)[:topk]
-
-    # Apply
     game.make_move(mv)
-    draw_pieces(board=game.board)
-    extra = f"\nAI last move: {_move_to_str(mv)}"
-    update_text_info(game, checkmate=game.is_checkmate(), stalemate=game.is_stalemate(), extra_text=extra)
-
-    # NEW: update AI info panel in the GUI
-    try:
-        v_after = float(critic_value(model, game))
-    except Exception:
-        v_after = None
-
-    lines = []
-    lines.append(f"AI enabled: {AI_ENABLED} | plays: {AI_PLAYS} | MCTS: {AI_USE_MCTS}")
-    lines.append(f"Sims: {AI_SIMS} | Temp: {AI_TEMP}")
-    lines.append("")
-    lines.append(f"Chosen move: {_move_to_str(mv)}")
-    if v_before is not None:
-        lines.append(f"Value before (side to move): {v_before:+.3f}")
-    if v_after is not None:
-        lines.append(f"Value after  (side to move): {v_after:+.3f}")
-    lines.append("")
-    lines.append("Top candidate moves:")
-    for i, (m, p) in enumerate(top, start=1):
-        lines.append(f"{i:2d}. {float(p):7.4f}  {_move_to_str(m)}")
+    draw_pieces(game.board)
+    update_text_info(game, checkmate=game.is_checkmate(), stalemate=game.is_stalemate(),
+                     extra_text=f"AI last move: {_move_to_str(mv)}")
+    lines = [f"MCTS simulations: up to {AI_SIMS}", f"Chosen move: {_move_to_str(mv)}"]
+    if value is not None:
+        lines.append(f"Neural value before move: {value:+.3f}")
+    lines += ["", "Top candidate moves:"]
+    top = sorted(pi_moves.items(), key=lambda item: item[1], reverse=True)[:10]
+    lines += [f"{probability:7.4f}  {_move_to_str(move)}" for move, probability in top]
     set_ai_info("\n".join(lines))
+
 
 def toggle_ai(event=None):
     global AI_ENABLED
     AI_ENABLED = not AI_ENABLED
     print("AI_ENABLED =", AI_ENABLED)
+    if AI_ENABLED:
+        root.after(100, ai_make_move)
 
 def toggle_mcts(event=None):
     global AI_USE_MCTS
@@ -414,4 +427,5 @@ root.bind("<t>", toggle_ai)      # toggle AI enabled
 root.bind("<m>", toggle_mcts)    # toggle MCTS on/off
 
 # run main event loop for Tk
+root.after(100, ai_make_move)
 root.mainloop()

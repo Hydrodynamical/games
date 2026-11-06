@@ -5,9 +5,6 @@ from __future__ import annotations
 
 import torch
 import torch.nn.functional as F
-from torch.optim import Adam
-
-from rl_interface import PolicyValueNet, NUM_ACTIONS
 
 
 def train_step(
@@ -20,11 +17,20 @@ def train_step(
     """
     batch: list of (state_tensor, pi_vector, z)
     """
+    if not batch:
+        raise ValueError("Training requires at least one position.")
     model.train()
 
     states = torch.stack([s for (s, _, _) in batch]).to(device)
     pi_targets = torch.stack([pi for (_, pi, _) in batch]).to(device)
     z_targets = torch.tensor([z for (_, _, z) in batch], dtype=torch.float32).to(device)
+
+    if not torch.isfinite(pi_targets).all() or (pi_targets < 0).any():
+        raise ValueError("Policy targets must be finite and nonnegative.")
+    if not torch.allclose(pi_targets.sum(dim=1), torch.ones(len(batch), device=device), atol=1e-5):
+        raise ValueError("Each policy target must sum to one.")
+    if not torch.isfinite(z_targets).all() or (z_targets.abs() > 1).any():
+        raise ValueError("Value targets must be finite and in [-1, 1].")
 
     logits, values = model(states)
     values = values.squeeze(1)

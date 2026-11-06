@@ -1,159 +1,97 @@
+"""Bounded, configurable neural MCTS self-play training.
+
+Example: python chess/scr/main.py --iterations 2 --sims 8 --max-moves 8
+"""
 from __future__ import annotations
-# https://chatgpt.com/share/695c85a9-4ed4-8006-83ab-d4bbc3e7b500
-# main.py
 
-import math
-import os
-import random
+import argparse
 from collections import deque
+from pathlib import Path
+import random
 
-import numpy as np
 import torch
-print("torch version:", torch.__version__)
 
-from chess_engine import GameState
-print(f"chess_engine.py being used:", GameState.__module__)
-
-from rl_interface import PolicyValueNet
-print("rl_interface.py being used:", PolicyValueNet.__module__)
-
-import mcts
-print("mcts.py being used:", mcts.__file__)
-
-from self_play import play_self_game
-print("self_play.py being used:", play_self_game.__module__)
-
-from train import train_step
-print("train.py being used:", train_step.__module__)
+try:
+    from .chess_engine import GameState
+    from .rl_interface import PolicyValueNet, load_model, save_model, select_device
+    from .self_play import play_self_game
+    from .train import train_step
+except ImportError:
+    from chess_engine import GameState
+    from rl_interface import PolicyValueNet, load_model, save_model, select_device
+    from self_play import play_self_game
+    from train import train_step
 
 
 def set_seed(seed: int) -> None:
     random.seed(seed)
-    np.random.seed(seed)
     torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-
-    # More deterministic behavior (may reduce performance)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
 
-    # Best set before Python starts, but harmless to set here too.
-    os.environ.setdefault("PYTHONHASHSEED", str(seed))
+
+def positive_int(value: str) -> int:
+    result = int(value)
+    if result < 1:
+        raise argparse.ArgumentTypeError("must be at least 1")
+    return result
 
 
-def penalty_schedule(
-    iteration: int,
-    p0: float = 0.2,
-    half_life: float = 10.0,
-    floor: float = 0.0,
-) -> float:
-    """
-    Exponentially decay truncation penalty from p0 toward floor.
-    half_life = number of iterations to halve the penalty.
-    """
-    if half_life <= 0:
-        return max(floor, p0)
-    p = p0 * math.pow(0.5, (iteration / half_life))
-    return max(floor, float(p))
-
-def mcts_sims_schedule(
-    game_idx: int,
-    start: int = 50,
-    end: int = 200,
-    warmup_games: int = 100,
-) -> int:
-    """
-    Linearly anneal max_moves from start to end over warmup_games.
-    """
-    if game_idx >= warmup_games:
-        return end
-    frac = game_idx / float(warmup_games)
-    return int(round(start + frac * (end - start)))
-
-def main():
-    """This function runs self-play training iterations."""
-    SEED = 1
-    set_seed(SEED)
-    # MPS (Mac) > CUDA (NVIDIA) > CPU device selection
-    if torch.backends.mps.is_available():
-        device = torch.device("mps")
-        print(f"Using MPS device: {device}")
-    elif torch.cuda.is_available():
-        device = torch.device("cuda")
-        print(f"Using CUDA device: {device}")
-    else:
-        device = torch.device("cpu")
-        print(f"Using CPU device: {device}")
-
-
-    model = PolicyValueNet().to(device)
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--iterations", type=positive_int, default=1000, help="Self-play games to generate")
+    parser.add_argument("--sims", type=positive_int, default=100, help="MCTS simulations per ply")
+    parser.add_argument("--max-moves", type=positive_int, default=200, help="Maximum plies per game")
+    parser.add_argument("--batch-size", type=positive_int, default=256)
+    parser.add_argument("--min-buffer", type=positive_int, default=2000, help="Positions before the first training step")
+    parser.add_argument("--replay-capacity", type=positive_int, default=20000)
+    parser.add_argument("--updates", type=positive_int, default=2, help="Training steps per game after warmup")
+    parser.add_argument("--checkpoint-dir", type=Path, default=Path(__file__).resolve().parent / "checkpoints")
+    parser.add_argument("--save-every", type=positive_int, default=5)
+    parser.add_argument("--resume", type=Path, help="Load network weights; optimizer/replay start fresh")
+    parser.add_argument("--hidden", type=positive_int, default=128, help="Convolution channels for a new model")
+    parser.add_argument("--device", choices=("cpu", "mps", "cuda"), default=None)
+    parser.add_argument("--threads", type=positive_int, default=4)
+    parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--temperature", type=float, default=1.0)
+    parser.add_argument("--progress", action="store_true")
+    args = parser.parse_args(argv)
+    if args.min_buffer > args.replay_capacity:
+        parser.error("--min-buffer must not exceed --replay-capacity")
+    from math import isfinite
+    if not isfinite(args.temperature) or args.temperature < 0:
+        parser.error("--temperature must be finite and nonnegative")
+    set_seed(args.seed)
+    torch.set_num_threads(args.threads)
+    device = torch.device(args.device) if args.device else select_device()
+    model = load_model(args.resume, device) if args.resume else PolicyValueNet(hidden=args.hidden).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-
-    game_idx = 0
-
-    # ----------------------------
-    # Replay buffer + minibatching
-    # ----------------------------
-    # Store (state_tensor, pi_vector, z) on CPU to save GPU memory.
-    REPLAY_CAPACITY = 100_000     # number of positions to keep
-    BATCH_SIZE = 256
-    UPDATES_PER_ITER = 2          # gradient steps per self-play game
-    MIN_BUFFER_TO_TRAIN = 2_000   # warm-up before training
-    replay = deque(maxlen=REPLAY_CAPACITY)
-
-    for iteration in range(1000):
-        print(f"\n=== Iteration {iteration} ===")
-        trunc_penalty = penalty_schedule(iteration, p0=0.5, half_life=100.0, floor=0.0)
-        draw_penalty = penalty_schedule(iteration, p0=0.5, half_life=100.0, floor=0.0)
-        
-        print(f"trunc_draw_penalty (annealed): {trunc_penalty:.4f}")
-        print(f"draw_penalty (annealed): {draw_penalty:.4f}")
-
-        # Fresh game
-        gs = GameState()
-        game_idx += 1
+    replay = deque(maxlen=args.replay_capacity)
+    args.checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Training on {device}; {args.iterations} games, {args.sims} simulations/ply")
+    for iteration in range(1, args.iterations + 1):
         game_data, result = play_self_game(
-            gs,
-            model,
-            num_mcts_sims=mcts_sims_schedule(game_idx, start=50, end=100, warmup_games=100),
-            temperature=0.25, # was 0.9
-            max_moves=200,
-            show_progress=False,
-            trunc_draw_penalty=trunc_penalty,  # annealed toward 0 over training
-            draw_penalty=draw_penalty,        # annealed toward 0 over training
-            diagnostics_per_ply=False,
-            add_root_dirichlet=True,
-            dir_alpha=0.3,
-            dir_epsilon=0.25
+            GameState(), model, num_mcts_sims=args.sims, temperature=args.temperature,
+            max_moves=args.max_moves, show_progress=args.progress,
         )
-
-        # Convert game to training examples and push into replay buffer
-        for state, pi, player in game_data:
-            z = result if player == "w" else -result
-            # Detach + store on CPU so replay doesn't retain any graphs / GPU tensors
-            replay.append((state.detach().cpu(), pi.detach().cpu(), float(z)))
-
-        print(f"Replay size: {len(replay)}")
-
-        # Train only after some buffer warm-up, then do a few minibatch updates
-        stats = None
-        if len(replay) >= MIN_BUFFER_TO_TRAIN:
-            for _ in range(UPDATES_PER_ITER):
-                batch_size = min(BATCH_SIZE, len(replay))
-                minibatch = random.sample(list(replay), batch_size)
-                stats = train_step(
-                    model,
-                    optimizer,
-                    minibatch,
-                    device,
-                )
-            print(stats)
+        for state, policy, player in game_data:
+            value = result if player == "w" else -result
+            replay.append((state.detach().cpu(), policy.detach().cpu(), float(value)))
+        print(f"Game {iteration}: {len(game_data)} plies, result={result:+.0f}, replay={len(replay)}")
+        if len(replay) >= args.min_buffer:
+            for _ in range(args.updates):
+                batch = random.sample(list(replay), min(args.batch_size, len(replay)))
+                stats = train_step(model, optimizer, batch, device)
+            print(f"Loss: {stats['loss']:.5f} (policy={stats['policy_loss']:.5f}, value={stats['value_loss']:.5f})")
         else:
-            print("Warming up replay buffer (skipping training this iter).")
-
-        # Save every 5 iterations
-        if iteration % 5 == 0:
-            torch.save(model.state_dict(), f"chess/scr/policy_value_net_{iteration}.pt")
+            print("Warming up replay buffer")
+        if iteration % args.save_every == 0 or iteration == args.iterations:
+            path = args.checkpoint_dir / f"policy_value_net_{iteration}.pt"
+            save_model(model, path)
+            print(f"Saved {path}")
+    return model
 
 
 if __name__ == "__main__":

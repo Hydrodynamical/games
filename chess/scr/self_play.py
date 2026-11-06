@@ -1,131 +1,84 @@
-# https://chatgpt.com/share/695c85a9-4ed4-8006-83ab-d4bbc3e7b500
-# self_play.py
-from typing import List, Tuple
+"""Generate policy targets by MCTS self-play and neutral draw value targets."""
+from __future__ import annotations
+
 from copy import deepcopy
-from tqdm import trange, tqdm
+import warnings
+
 import torch
 
-# from chess_engine import GameState, Move
-from rl_interface import (
-    encode_gamestate,
-    move_to_action,
-    NUM_ACTIONS,
-)
-from mcts import mcts_search, MCTSDiagnostics
+try:
+    from .rl_interface import encode_gamestate, move_to_action, NUM_ACTIONS, pick_move_from_dist
+    from .mcts import mcts_search, MCTSDiagnostics, best_move
+except ImportError:
+    from rl_interface import encode_gamestate, move_to_action, NUM_ACTIONS, pick_move_from_dist
+    from mcts import mcts_search, MCTSDiagnostics, best_move
+
+
+def terminal_result(gs):
+    """White's result, or None while playing. Checkmate takes precedence."""
+    if gs.is_checkmate():
+        return -1.0 if gs.player == "w" else 1.0
+    if gs.is_stalemate() or gs.is_draw():
+        return 0.0
+    return None
 
 
 def play_self_game(
-    gs,
-    model,
-    num_mcts_sims: int = 30,
-    temperature: float = 2,
-    max_moves: int = 200,
-    show_progress: bool = False,
-    trunc_draw_penalty: float = 0.2,  # penalty for truncated games, positive
-    draw_penalty: float = 0.02,        # penalty for non-truncation draws (3-fold/50-move), positive
-    diagnostics_per_ply: bool = False,
-    add_root_dirichlet: bool = True,
-    dir_alpha: float = 0.3,
-    dir_epsilon: float = 0.25
+    gs, model, num_mcts_sims: int = 30, temperature: float = 1.0,
+    max_moves: int = 200, show_progress: bool = False,
+    trunc_draw_penalty: float = 0.0, draw_penalty: float = 0.0,
+    diagnostics_per_ply: bool = False, add_root_dirichlet: bool = True,
+    dir_alpha: float = 0.3, dir_epsilon: float = 0.25,
 ):
-    """
-    Play one self-play game using MCTS.
+    """Return (state, visit-policy, mover) samples and White's result.
 
-    Returns:
-        data: list of (state_tensor, pi_vector, player)
-        result: final game result from White's perspective (win/loss as ±1; draws may return a small ±penalty)
+    Draws and games stopped at max_moves are scored zero. The legacy penalty
+    arguments are accepted but ignored: last-mover penalties create incorrect
+    zero-sum training labels. Temperature controls played moves; training policy
+    targets remain the normalized MCTS visit counts.
     """
-    data = []
+    if max_moves < 0 or num_mcts_sims < 0:
+        raise ValueError("Move and simulation budgets must be nonnegative.")
+    # Validate temperature even for an initially terminal game.
+    from math import isfinite
+    if not isfinite(temperature) or temperature < 0:
+        raise ValueError("Temperature must be finite and nonnegative.")
+    if trunc_draw_penalty or draw_penalty:
+        warnings.warn("Draw penalties are ignored; chess draws have value zero.", DeprecationWarning, stacklevel=2)
     gs = deepcopy(gs)
-
-    # NEW: keep MCTS tree root across plies (tree reuse)
-    root_node = None
-
-    # Play until termination or max_moves
-    for ply in trange(max_moves,desc="Self-Play Game", leave=False):
-        # MCTS → improved policy
-        if diagnostics_per_ply:
-            per_move = MCTSDiagnostics()
-        else:
-            per_move = None
-        out = mcts_search(
-            gs, 
-            model, 
-            num_sims=num_mcts_sims, 
-            show_progress=show_progress,
-            diagnostics = per_move,
-            add_root_dirichlet=add_root_dirichlet,
-            dir_alpha=dir_alpha,
-            dir_epsilon=dir_epsilon,
-            root=root_node,
-            return_root=True,
-            batch_size=16,
-            )
-        pi_moves, root_node = out
-        
-        # Build full π vector in 4096 action space
-        pi = torch.zeros(NUM_ACTIONS)
-        for mv, p in pi_moves.items():
-            pi[move_to_action(mv)] = p
-
-        # Store training triple
-        state_tensor = encode_gamestate(gs)
-        data.append((state_tensor, pi, gs.player))
-
-        # Sample move (temperature-controlled)
-        moves, probs = zip(*pi_moves.items())
-        if temperature == 0:
-            mv = moves[max(range(len(probs)), key=lambda i: probs[i])]
-        else:
-            idx = torch.multinomial(torch.tensor(probs), 1).item()
-            mv = moves[idx]
-
-        # Play the move (this should also switch gs.player internally)
+    data, root_node = [], None
+    result = terminal_result(gs)
+    if result is not None:
+        return data, result
+    plies = range(max_moves)
+    if show_progress:
+        from tqdm import tqdm
+        plies = tqdm(plies, desc="Self-play", leave=False)
+    for _ in plies:
+        diagnostics = MCTSDiagnostics() if diagnostics_per_ply else None
+        pi_moves, root_node = mcts_search(
+            gs, model, num_sims=num_mcts_sims, show_progress=show_progress,
+            diagnostics=diagnostics, add_root_dirichlet=add_root_dirichlet,
+            dir_alpha=dir_alpha, dir_epsilon=dir_epsilon,
+            root=root_node, return_root=True, batch_size=16,
+        )
+        if not pi_moves:
+            result = terminal_result(gs)
+            if result is None:
+                raise RuntimeError("MCTS returned no moves for a nonterminal position.")
+            return data, result
+        pi = torch.zeros(NUM_ACTIONS, dtype=torch.float32)
+        for mv, probability in pi_moves.items():
+            pi[move_to_action(mv)] = probability
+        data.append((encode_gamestate(gs), pi, gs.player))
+        mv = best_move(pi_moves, root_node) if temperature == 0 else pick_move_from_dist(pi_moves, temperature)
+        mover = gs.player
         gs.make_move(mv)
-
-        # NEW: advance the root to the played move (reuse subtree next ply)
-        if root_node is not None and mv in root_node.children:
-            root_node = root_node.children[mv]
-        else:
-            root_node = None
-
+        # Giving check is legal; only the moving side's king must be safe.
         if hasattr(gs, "in_check"):
-            # ensure current player's king is not left in check (illegal position)
-            assert not gs.in_check(gs.player), f"Illegal position: {gs.player} is in check after move {mv}"
-
-        # After make_move, check draw rules
-        if hasattr(gs, "is_draw") and gs.is_draw():
-            print("\n=== DRAW ===")
-            if hasattr(gs, "draw_reason"):
-                print(f"Reason: {gs.draw_reason()}")
-            print(f"Last move: {mv}")
-            # Penalize the player who *just moved* for causing the draw
-            # (3-fold repetition / 50-move, etc.), rather than always penalizing White.
-            # Result is from White's perspective:
-            #   - if White caused the draw => negative
-            #   - if Black caused the draw => positive (penalizes Black)
-            mover = gs.opponent_color() if hasattr(gs, "opponent_color") else ("b" if gs.player == "w" else "w")
-            return data, (-float(draw_penalty) if mover == "w" else +float(draw_penalty))
-
-        # After make_move, gs.player is the opponent of the player who just moved.
-        # If gs.player is checkmated, the winner is the other side.
-        if gs.is_checkmate():
-            winner = gs.opponent_color() if hasattr(gs, "opponent_color") else ("b" if gs.player == "w" else "w")
-            print("\n=== CHECKMATE ===")
-            print(f"Winner: {winner}")
-            print(f"Winning move: {mv}")
-            return data, (+1 if winner == "w" else -1)
-
-        if gs.is_stalemate():
-            print("\n=== STALEMATE ===")
-            print(f"Last move: {mv}")
-            # Stalemate is a draw, but we penalize the player who delivered it.
-            mover = gs.opponent_color() if hasattr(gs, "opponent_color") else ("b" if gs.player == "w" else "w")
-            return data, (-float(draw_penalty) if mover == "w" else +float(draw_penalty))
-
-    # If we hit max_moves without termination, treat as draw by truncation
-    print("\n=== TRUNCATION DRAW ===")
-    print(f"Reached max_moves={max_moves} without checkmate/stalemate.")
-    # Penalize the player who made the *last move* that led into the truncation.
-    mover = gs.opponent_color() if hasattr(gs, "opponent_color") else ("b" if gs.player == "w" else "w")
-    return data, (-float(trunc_draw_penalty) if mover == "w" else +float(trunc_draw_penalty))
+            assert not gs.in_check(mover), f"Move leaves {mover}'s king in check: {mv}"
+        root_node = root_node.children.get(mv) if root_node is not None else None
+        result = terminal_result(gs)
+        if result is not None:
+            return data, result
+    return data, 0.0

@@ -1,3 +1,7 @@
 .venv*/
-chess/scr/__pycache__/
-chess/scr/*.pt
+__pycache__/
+*.py[cod]
+*.pt
+.pytest_cache/
+.DS_Store
+checkpoints/

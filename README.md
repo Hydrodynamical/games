@@ -1,115 +1,112 @@
-# Games
+# Hydrodynamical Chess
 
-A personal project exploring a chess engine and graphical interface in Python. This is an exploratory implementation; the roadmap below records rules and interface work.
+A custom Python chess rules engine with playable Monte Carlo tree search (MCTS), a Tk board, a command-line interface, and a basic UCI adapter. The default search uses a handcrafted evaluator and needs no trained model or third-party packages. An optional PyTorch policy/value network supports batched search and self-play training.
 
-## Getting Started
+This is an experimental engine with no established Elo rating. Rules correctness and a reproducible search/training pipeline are the current focus.
 
-```bash
-git clone https://github.com/Hydrodynamical/games.git
-cd games
-```
+## Play now
 
-Create one of the documented environments below from the repository root.
-The chess entry point is `chess/main.py`; run it from the `chess/` directory
-using the interpreter from the environment you installed.
-
-## Reproducible Python Environments
-
-This repo intentionally does **not** commit virtual environment folders (they are ignored via `.gitignore`).
-Instead, it tracks **lock files** generated from each virtual environment so you can recreate them deterministically.
-
-Currently there are two environments:
-
-- **Python 3.12** (For ML): `requirements/requirements-py312.lock.txt`
-- **Python 3.15 (alpha)** (For UI): `requirements/requirements-py315.lock.txt`
-
-### Create + Install (Python 3.12 for ML)
+Use Python 3.12 or newer. Run commands from the repository root:
 
 ```bash
-# From the repository root
-python3.12 -m venv .venv312
-./.venv312/bin/python -m pip install -U pip
-./.venv312/bin/python -m pip install -r requirements/requirements-py312.lock.txt
+python3 chess/cli.py play --you w --sims 400
 ```
 
-### Create + Install (Python 3.15 alpha / experimental for UI)
+Enter moves such as `e2e4`, `e1g1` (castling), or `a7a8n` (promotion). `moves` lists legal moves, `undo` takes back your turn and the engine reply, `fen` prints the position, and `quit` exits. Use `--you b` to play Black. `--time 1` additionally limits each search to approximately one second; the first simulation or time limit reached ends the search.
 
-Only use this if you already have a Python 3.15 alpha installed locally.
+To use the graphical board:
 
 ```bash
-# From the repository root
-python3.15 -m venv .venv
-./.venv/bin/python -m pip install -U pip
-./.venv/bin/python -m pip install -r requirements/requirements-py315.lock.txt
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r requirements/gui.txt
+.venv/bin/python chess/UI_with_AI.py --you w --sims 400
 ```
 
-### Updating the Lock Files
+The GUI also requires Tk support in your Python installation. Left-click source and destination squares, right-click to highlight legal moves, and press `u` to undo. Promotion prompts for Q/R/B/N. The engine searches in a worker thread, keeping the board responsive. The older two-player board is still available at `chess/main.py`.
 
-When you change dependencies inside an environment, regenerate its lock file:
+## Inspect positions
 
 ```bash
-# From the repository root
-./.venv312/bin/python -m pip freeze --exclude-editable | sort > requirements/requirements-py312.lock.txt
-./.venv/bin/python -m pip freeze --exclude-editable | sort > requirements/requirements-py315.lock.txt
+python3 chess/cli.py analyze --sims 1000
+python3 chess/cli.py analyze --fen '7k/8/5KQ1/8/8/8/8/8 w - - 0 1' --sims 100
+python3 chess/cli.py perft 3
 ```
 
-Commit the updated files under `requirements/` and push to GitHub.
+The last command counts 8,902 legal move paths from the initial position. FEN loading, legal UCI move parsing, and FEN export are exposed on `GameState` in `chess/scr/chess_engine.py`.
 
+Implemented rules include king safety, castling, en passant, all four promotions, exact undo, checkmate, stalemate, repetition, the fifty-move counter, and common insufficient-material cases. Search copies preserve draw history. The application automatically accepts an available threefold or fifty-move draw; it does not implement a separate player draw-claim interface. Checkmate takes precedence. General dead-position proof is not implemented.
 
-## Next Iteration TODO
+## Use with a UCI chess GUI
 
-### Core Rules & Engine Correctness
-- [ ] **Add castling**
-  - Track castling rights (K/Q side for both colors)
-  - Disallow castling through check or out of check
-  - Update legality filtering to account for attacked transit squares
+Select the executable `chess-engine` in a chess GUI on macOS/Linux, or configure the equivalent command:
 
-- [ ] **Add en passant**
-  - Track en passant target square
-  - Allow capture only on the immediately following move
-  - Ensure en passant does not expose own king to check
+```bash
+python3 /absolute/path/to/games/chess/cli.py uci
+```
 
-- [ ] **Add promotion**
-  - Default to queen promotion
-  - UI: Popup with prompt for string input "Q,N,B,R,".
+The launcher works from any working directory and prefers the repository's `.venv` when present. Supported commands include `uci`, `isready`, `ucinewgame`, `position startpos`, `position fen`, move histories, `go nodes`, `go movetime`, clock/increment budgets, `go infinite`, `stop`, and `quit`. `Simulations` and `CPuct` are configurable options. Here `nodes` counts MCTS simulations. Search remains interruptible and answers `isready` while thinking.
 
-- [ ] **Correct undo functionality**
-  - Store captured piece in move log
-  - Restore board state exactly on undo
-  - Prepare undo logic for future MCTS/search (no deepcopies)
+This first adapter does not implement `depth`, `mate`, `searchmoves`, or pondering. Use simulation or time limits. Timing is cooperative: current move generation or a neural batch finishes before cancellation. UCI currently uses the built-in evaluator; neural checkpoints work through the GUI or model-play script.
 
-- [ ] **Finite game checks (beyond stalemate)**
-  - 50 move rule
-  - Threefold repetition
-  - Insufficient material
----
+## Neural self-play
 
-### Game State & Feedback
-- [ ] **Add “White/Black is in check” display**
-  - Use attack-map logic (not legal moves)
-  - Update after every move
+Python 3.12 is the tested neural environment. Install the optional dependencies:
 
-- [ ] **Highlight capture moves**
-  - Display available capture moves in a distinct color (e.g. red)
-  - Non-capture moves remain current highlight color
-  - Use `is_attack=False` move generation + board inspection
+```bash
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r requirements/neural.txt
+```
 
----
+Run a small end-to-end smoke test (this creates a checkpoint, not a strong player):
 
-### UI / Interaction
-- [ ] **Add undo button**
-  - Revert last move using corrected undo logic
-  - Sync board, player, and move history
+```bash
+.venv/bin/python chess/scr/main.py \
+  --iterations 1 --sims 2 --max-moves 2 --hidden 8 --device cpu \
+  --batch-size 2 --min-buffer 1 --updates 1 \
+  --checkpoint-dir checkpoints/smoke
+```
 
-- [ ] **Add move navigation**
-  - Arrow keys (← / →) to step through move history
-  - Support replaying from any previous position
+A longer experiment can start with:
 
----
+```bash
+.venv/bin/python chess/scr/main.py --iterations 100 --sims 100 --max-moves 200
+```
 
-### Output / Export
-- [ ] **Save game history as a GIF**
-  - Render board after each move
-  - Allow custom filename input
-  - Optional: configurable frame delay
+Use `--help` for replay capacity, seeds, checkpoint intervals, threads, and device options. Checkpoints go to `chess/scr/checkpoints/` by default. `--resume PATH` loads network weights; optimizer and replay state start fresh. CPU, CUDA, and Apple MPS are supported when available; automated neural checks use CPU.
 
+Play a new checkpoint with either interface:
+
+```bash
+.venv/bin/python chess/UI_with_AI.py --model checkpoints/smoke/policy_value_net_1.pt
+.venv/bin/python chess/scr/play_with_model.py --model checkpoints/smoke/policy_value_net_1.pt --you w --temp 0
+```
+
+**Checkpoint format changed:** the network now receives 20 input planes and produces 4,480 policy logits, including separate underpromotion actions. Older 13-plane/4,096-action checkpoints are rejected with an explanation and need retraining. Training assigns zero to draws and truncated games; stronger training will need longer games, evaluation matches, and careful treatment of truncation.
+
+## Tests
+
+The core and public interfaces can be checked without dependencies:
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
+For independent rules comparison and neural tests:
+
+```bash
+.venv/bin/python -m pip install -r requirements/dev.txt -r requirements/neural.txt
+.venv/bin/python -m unittest discover -s tests -v
+```
+
+Tests cover six reference perft positions, special moves, undo/history, tactical MCTS, value perspective, batched neural evaluation, temperature, checkpoints, and subprocess UCI behavior. The optional [python-chess](https://python-chess.readthedocs.io/en/latest/) oracle compares legal moves/state across seeded games and drives the UCI executable. Runtime rules and search remain custom code. GitHub Actions runs core checks on Python 3.12/3.14 and neural checks on 3.12.
+
+The `requirements/*py312.lock.txt` and `*py315.lock.txt` files are historical environment snapshots; use `gui.txt`, `neural.txt`, and `dev.txt` for the current setup. Virtual environments and model weights are ignored by Git.
+
+## Development direction
+
+- Establish search strength with repeatable tactical suites and engine matches.
+- Improve evaluation and search efficiency, then benchmark neural search against the baseline.
+- Add checkpoint evaluation and optimizer/replay persistence before scaling training.
+- Extend UCI coverage and add PGN import/export.
+
+See [MCTS implementation notes](docs/mcts.md) for value conventions and search stages. UCI communication follows the supported subset of the [UCI specification](https://backscattering.de/chess/uci/).
