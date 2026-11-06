@@ -60,7 +60,7 @@ def positive_float(value: str) -> float:
     return result
 
 
-def replay_summary(replay, cutoff_value_policy="exclude"):
+def replay_summary(replay, cutoff_value_policy="draw"):
     counts = Counter("cutoff" if item[3] else "draw" if item[2] == 0 else "decisive" for item in replay)
     excluded = counts["cutoff"] if cutoff_value_policy == "exclude" else 0
     return {"positions": len(replay), "cutoff_positions": counts["cutoff"],
@@ -88,8 +88,8 @@ def main(argv=None):
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--learning-rate", type=positive_float, default=1e-3)
-    parser.add_argument("--cutoff-value-policy", choices=("exclude", "draw"), default="exclude",
-                        help="Keep cutoffs for policy; exclude their value loss (default), or reproduce legacy zero labels")
+    parser.add_argument("--cutoff-value-policy", choices=("draw", "exclude"), default="draw",
+                        help="Keep cutoffs for policy and zero-valued outcomes (default); exclude reproduces the value-mask experiment")
     parser.add_argument("--trace-every", type=nonnegative_int, default=10,
                         help="Trace first game and every Nth game; 1 traces all, 0 disables")
     parser.add_argument("--probe-every", type=nonnegative_int, default=5,
@@ -129,7 +129,7 @@ def main(argv=None):
     print(f"Training on {device}; {args.iterations} games, {args.sims} simulations/ply", flush=True)
     print("Move-limit positions train policy only; their value loss is excluded."
           if args.cutoff_value_policy == "exclude"
-          else "Legacy control: move-limit positions train both policy and zero-valued outcomes.", flush=True)
+          else "Move-limit positions train both policy and zero-valued outcomes (default draw-label policy).", flush=True)
 
     def replay_state():
         return replay_summary(replay, args.cutoff_value_policy)

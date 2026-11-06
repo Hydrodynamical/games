@@ -53,7 +53,7 @@ class RunLoggerTests(unittest.TestCase):
 
 @unittest.skipUnless(importlib.util.find_spec("torch"), "optional torch is not installed")
 class TrainingRunTests(unittest.TestCase):
-    def test_training_runner_writes_inspectable_outputs(self):
+    def test_training_runner_defaults_to_draw_labels_and_writes_inspectable_outputs(self):
         from scr.main import main
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary) / "run"
@@ -67,43 +67,53 @@ class TrainingRunTests(unittest.TestCase):
             self.assertEqual(summary["optimizer_steps"], 2)
             self.assertEqual(summary["replay"]["cutoff_positions"], 4)
             self.assertEqual(summary["replay"]["policy_target_positions"], 4)
-            self.assertEqual(summary["replay"]["value_target_positions"], 0)
+            self.assertEqual(summary["replay"]["value_target_positions"], 4)
+            self.assertEqual(summary["replay"]["excluded_value_positions"], 0)
             self.assertEqual(summary["policy_samples_seen"], 4)
-            self.assertEqual(summary["value_samples_seen"], 0)
-            self.assertEqual(summary["cutoff_value_policy"], "exclude")
+            self.assertEqual(summary["value_samples_seen"], 4)
+            self.assertEqual(summary["cutoff_value_policy"], "draw")
             games = [json.loads(line) for line in (directory / "games.jsonl").read_text().splitlines()]
             self.assertEqual(len(games[0]["trace"]), 2)
-            self.assertTrue(all(row["value_target_available"] is False for row in games))
+            self.assertTrue(all(row["value_target_available"] is True for row in games))
             updates = [json.loads(line) for line in (directory / "updates.jsonl").read_text().splitlines()]
             self.assertTrue(all(row["cutoff_target_fraction"] == 1 for row in updates))
             self.assertTrue(all(row["policy_sample_count"] == 2 for row in updates))
-            self.assertTrue(all(row["value_sample_count"] == 0 for row in updates))
-            self.assertTrue(all(row["value_mae"] is None for row in updates))
-            self.assertTrue(all(row["value_loss"] == 0 for row in updates))
+            self.assertTrue(all(row["value_sample_count"] == 2 for row in updates))
+            self.assertTrue(all(row["value_metrics_available"] for row in updates))
+            self.assertTrue(all(row["value_mae"] is not None for row in updates))
+            self.assertTrue(all(row["target_value_mean"] == 0 for row in updates))
+            self.assertTrue(all(row["zero_value_baseline_mse"] == 0 for row in updates))
+            self.assertTrue(all(row["value_target_draw_fraction"] == 1 for row in updates))
             self.assertTrue((directory / "report.html").is_file())
             self.assertTrue((directory / "checkpoints/policy_value_net_0.pt").is_file())
             self.assertTrue((directory / "checkpoints/policy_value_net_2.pt").is_file())
 
-    def test_legacy_draw_control_keeps_cutoff_value_targets(self):
+    def test_explicit_experimental_exclusion_keeps_cutoffs_for_policy_only(self):
         from scr.main import main
         with tempfile.TemporaryDirectory() as temporary:
-            directory = Path(temporary) / "draw-control"
+            directory = Path(temporary) / "value-mask"
             main(["--iterations", "1", "--sims", "2", "--max-moves", "2",
                   "--hidden", "8", "--batch-size", "2", "--min-buffer", "1",
                   "--updates", "1", "--threads", "1", "--device", "cpu",
                   "--run-dir", str(directory), "--probe-every", "0", "--trace-every", "0",
-                  "--cutoff-value-policy", "draw"])
+                  "--cutoff-value-policy", "exclude"])
             summary = json.loads((directory / "summary.json").read_text())
-            self.assertEqual(summary["cutoff_value_policy"], "draw")
-            self.assertEqual(summary["excluded_value_positions"], 0)
+            self.assertEqual(summary["cutoff_value_policy"], "exclude")
+            self.assertEqual(summary["excluded_value_positions"], 2)
+            self.assertEqual(summary["replay"]["policy_target_positions"], 2)
+            self.assertEqual(summary["replay"]["value_target_positions"], 0)
             self.assertEqual(summary["policy_samples_seen"], 2)
-            self.assertEqual(summary["value_samples_seen"], 2)
+            self.assertEqual(summary["value_samples_seen"], 0)
             game = json.loads((directory / "games.jsonl").read_text())
-            self.assertTrue(game["value_target_available"])
+            self.assertFalse(game["value_target_available"])
             update = json.loads((directory / "updates.jsonl").read_text())
-            self.assertEqual(update["value_sample_count"], 2)
-            self.assertEqual(update["zero_value_baseline_mse"], 0)
-            self.assertEqual(update["value_target_draw_fraction"], 1)
+            self.assertEqual(update["policy_sample_count"], 2)
+            self.assertEqual(update["value_sample_count"], 0)
+            self.assertEqual(update["value_loss"], 0)
+            self.assertFalse(update["value_metrics_available"])
+            self.assertIsNone(update["value_mae"])
+            self.assertIsNone(update["zero_value_baseline_mse"])
+            self.assertIsNone(update["value_target_draw_fraction"])
 
 
 if __name__ == "__main__":

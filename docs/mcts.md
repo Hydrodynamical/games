@@ -19,7 +19,7 @@ The 20 input planes encode 12 piece planes, side to move, four castling rights, 
 
 The 4,480-action space preserves the original 4,096 source/destination indices for ordinary moves and queen promotions. Another 384 slots distinguish knight/bishop/rook promotions by color and source/destination file. Illegal actions are masked during search. Distinct promotion choices no longer overwrite one another in self-play targets.
 
-Value targets are +1/-1 for a win/loss by the recorded player, and 0 for genuine draws. The training runner retains move-limit positions for policy learning but excludes their value loss by default. `--cutoff-value-policy draw` restores the earlier zero-label treatment for controlled comparisons. Value MSE averages over eligible rows only. Small smoke runs prove generation, backpropagation, and checkpoint IO work; they do not establish playing strength.
+Value targets are +1/-1 for a win/loss by the recorded player, and 0 for genuine draws. By default, the training runner also labels move-limit positions as value zero and retains their policy targets (`--cutoff-value-policy draw`). The experimental `--cutoff-value-policy exclude` omits their value loss while keeping policy training, and remains available to reproduce the comparison. Value MSE averages over eligible rows, which is the entire batch under the default draw policy. Small smoke runs prove generation, backpropagation, and checkpoint IO work; they do not establish playing strength.
 
 ## Next experiments
 

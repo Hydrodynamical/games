@@ -81,7 +81,7 @@ Play a new checkpoint with either interface:
 .venv/bin/python chess/scr/play_with_model.py --model checkpoints/smoke/policy_value_net_1.pt --you w --temp 0
 ```
 
-**Checkpoint format changed:** the network now receives 20 input planes and produces 4,480 policy logits, including separate underpromotion actions. Older 13-plane/4,096-action checkpoints are rejected with an explanation and need retraining. Genuine draws train value zero. Move-limit positions now train policy only; `--cutoff-value-policy draw` reproduces the earlier zero-label control.
+**Checkpoint format changed:** the network now receives 20 input planes and produces 4,480 policy logits, including separate underpromotion actions. Older 13-plane/4,096-action checkpoints are rejected with an explanation and need retraining. Genuine draws and move-limit positions train value zero by default, while retaining their policy targets. `--cutoff-value-policy exclude` remains available to reproduce the value-mask experiment.
 
 ## Inspect how training learns
 
@@ -92,7 +92,7 @@ Run a short experiment with every game traced and repeated fixed-position checks
   --iterations 12 --sims 64 --max-moves 200 --hidden 128 \
   --batch-size 64 --min-buffer 256 --updates 2 --seed 1 --device cpu \
   --run-dir runs/inspection-01 --trace-every 1 \
-  --cutoff-value-policy exclude \
+  --cutoff-value-policy draw \
   --probe-every 4 --probe-sims 80 --save-every 4 --report-every 1
 ```
 
@@ -115,7 +115,7 @@ The files are designed for direct inspection or later analysis:
 | `summary.json` | Current run status, ending counts, cutoff fractions, replay composition, and checkpoints |
 | `report.html` | Interactive view of those records |
 
-Cutoffs use chess outcome `*` (unfinished). By default their positions stay in replay for policy training but are masked out of value loss. Value MSE averages only eligible positions; a batch containing only cutoffs performs a policy-only update. The report shows the active cutoff policy and the number of examples supervising each head. Historical runs without a cutoff-policy flag are displayed as the legacy draw-label control. Metrics are observations of the current learning setup; fixed tactical checks and lower loss do not establish an Elo rating. See [the inspection guide](docs/training-inspection.md) for how to interpret the metrics.
+Cutoffs use chess outcome `*` (unfinished). By default their positions train both policy and value, with zero-valued labels for value training (`--cutoff-value-policy draw`). The experimental `--cutoff-value-policy exclude` retains their policy targets but omits them from value loss, averaging value MSE over the remaining eligible positions. The report shows the active cutoff policy and the number of examples supervising each head. Historical runs without a cutoff-policy flag also use draw labels. Metrics are observations of the current learning setup; fixed tactical checks and lower loss do not establish an Elo rating. See [the inspection guide](docs/training-inspection.md) for how to interpret the metrics.
 
 The [first recorded experiment](experiments/2026-11-06-inspection-01/README.md) includes configuration, game histories, update/probe measurements, and a learning figure: 8 checkmates and 4 cutoffs, with no demonstrated value-prediction advantage over always predicting zero.
 
