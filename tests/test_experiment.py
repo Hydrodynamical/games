@@ -1,5 +1,6 @@
 """Run logs distinguish actual outcomes, training labels, and partial runs."""
 import importlib.util
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -53,6 +54,56 @@ class RunLoggerTests(unittest.TestCase):
 
 @unittest.skipUnless(importlib.util.find_spec("torch"), "optional torch is not installed")
 class TrainingRunTests(unittest.TestCase):
+    def test_checkpoint_initialization_preserves_weights_and_starts_fresh_rl_stage(self):
+        import torch
+        from scr.chess_engine import GameState
+        from scr.main import main
+        from scr.rl_interface import PolicyValueNet, encode_gamestate, load_model, move_to_action, NUM_ACTIONS
+        from scr.train import train_step
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            checkpoint, directory = root / "supervised.pt", root / "rl"
+            torch.set_num_threads(1)
+            torch.manual_seed(7)
+            model = PolicyValueNet(hidden=4)
+            # A supervised checkpoint may contain optimizer/RNG/training state;
+            # this entry point deliberately imports only its network weights.
+            torch.save({"format_version": 2, "state_dict": model.state_dict(),
+                        "optimizer_state_dict": {"not_for_this_stage": True},
+                        "training_state": {"completed_epoch": 3, "step": 999}}, checkpoint)
+            main(["--resume", str(checkpoint), "--iterations", "1", "--sims", "1", "--max-moves", "1",
+                  "--batch-size", "1", "--min-buffer", "1", "--updates", "1", "--threads", "1",
+                  "--device", "cpu", "--seed", "2", "--learning-rate", "0.0001",
+                  "--run-dir", str(directory), "--probe-every", "0", "--trace-every", "0"])
+            metadata = json.loads((directory / "config.json").read_text())
+            config = metadata["config"]
+            self.assertEqual(config["initialization"], "checkpoint_weights")
+            self.assertEqual(config["initialization_checkpoint_sha256"], hashlib.sha256(checkpoint.read_bytes()).hexdigest())
+            self.assertEqual(config["optimizer_initialization"], "fresh Adam")
+            self.assertEqual(config["replay_initialization"], "empty")
+            self.assertEqual(config["hidden"], 4)
+            self.assertIn("both players", config["policy_target"])
+            self.assertIn("side-to-move", config["value_target"])
+            initial = load_model(directory / "checkpoints/policy_value_net_0.pt", "cpu")
+            for name, tensor in model.state_dict().items():
+                self.assertTrue(torch.equal(tensor, initial.state_dict()[name]), name)
+            summary = json.loads((directory / "summary.json").read_text())
+            self.assertEqual(summary["optimizer_steps"], 1)
+            self.assertEqual(summary["replay"]["positions"], 1)
+            game = json.loads((directory / "games.jsonl").read_text())
+            self.assertEqual(game["step_before_updates"], 0)
+            self.assertEqual(game["termination"], "move_limit")
+            # One simulation assigns all visits to the single played move.
+            state = GameState()
+            policy = torch.zeros(NUM_ACTIONS)
+            policy[move_to_action(state.parse_uci(game["moves"][0]))] = 1.
+            train_step(initial, torch.optim.Adam(initial.parameters(), lr=.0001),
+                       [(encode_gamestate(state), policy, 0.)], "cpu")
+            final = load_model(directory / "checkpoints/policy_value_net_1.pt", "cpu")
+            for name, tensor in initial.state_dict().items():
+                self.assertTrue(torch.equal(tensor, final.state_dict()[name]), name)
+
     def test_training_runner_defaults_to_draw_labels_and_writes_inspectable_outputs(self):
         from scr.main import main
         with tempfile.TemporaryDirectory() as temporary:

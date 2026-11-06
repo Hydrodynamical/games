@@ -1,0 +1,81 @@
+{
+  "recorded_at": "2026-11-06T23:04:26.372831+00:00",
+  "objective": "Measure whether MCTS self-play from the selected supervised epoch-3 model improves value prediction and equal-search-budget play.",
+  "baseline_checkpoint": "runs/2026-11-06-hikaru-supervised-02/checkpoints/best.pt",
+  "baseline_sha256": "b6360d2b1de42fc704813248946830394bd3eccafa0ab251fd997f627abef12a",
+  "baseline_selected_epoch": 3,
+  "training_run": "runs/2026-11-06-hikaru-selfplay-01",
+  "training": {
+    "iterations": 100,
+    "sims": 64,
+    "max_moves": 400,
+    "temperature": 1.0,
+    "batch_size": 64,
+    "min_buffer": 256,
+    "replay_capacity": 20000,
+    "updates": 8,
+    "learning_rate": 0.0001,
+    "value_loss_weight": 1.0,
+    "seed": 2,
+    "device": "cpu",
+    "threads": 4,
+    "cutoff_value_policy": "draw",
+    "dirichlet_alpha": 0.3,
+    "dirichlet_fraction": 0.25,
+    "save_every": 10,
+    "probe_every": 10,
+    "probe_sims": 64,
+    "trace_every": 10,
+    "report_every": 10,
+    "optimizer_initialization": "fresh Adam",
+    "replay_initialization": "empty"
+  },
+  "candidate_selection": "Final checkpoint after 100 games; no test/benchmark-based checkpoint selection or hyperparameter tuning.",
+  "value_benchmark": {
+    "directory": "runs/2026-11-06-hikaru-value-benchmark-01",
+    "generator": "frozen supervised baseline",
+    "games": 20,
+    "sims": 64,
+    "max_plies": 400,
+    "temperature": 1.0,
+    "seed": 20261107,
+    "threads": 4,
+    "root_noise": true,
+    "training_replay_use": false,
+    "scoring": "All pre-move positions from naturally completed games only; cutoffs explicitly excluded; compare both models on identical inputs and side-to-move outcomes.",
+    "limitations": "Targets are observed outcomes of the frozen baseline playing itself with exploration, not perfect-play values."
+  },
+  "strength_comparison": {
+    "match_pairs": 10,
+    "sims": 64,
+    "max_plies": 400,
+    "seed": 1,
+    "threads": 4,
+    "root_noise": false,
+    "move_sampling": false,
+    "tree_reuse": false,
+    "color_paired": true,
+    "cutoffs": "unresolved; report completed-only score and bounds over all games"
+  },
+  "value_curve_games": [
+    0,
+    20,
+    40,
+    60,
+    80,
+    100
+  ],
+  "human_retention": {
+    "dataset": "data/hikaru-blitz-5000/prepared",
+    "split": "test",
+    "positions": "full test split; policy only Hikaru turns, values both sides",
+    "used_for_selection": false
+  },
+  "notes": [
+    "Keep the original supervised checkpoint unchanged.",
+    "Training cutoff-zero labels are retained as previously requested.",
+    "Replay excludes benchmark and human holdout games.",
+    "Value curves are diagnostic after training, not checkpoint-selection gates.",
+    "A single 100-game pilot and 20 paired matches are not an Elo estimate or definitive evidence of strength."
+  ]
+}

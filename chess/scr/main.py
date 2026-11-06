@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 from collections import Counter, deque
 from datetime import datetime, timezone
+import hashlib
 import math
 from pathlib import Path
 import random
@@ -116,11 +117,23 @@ def main(argv=None):
     torch.set_num_threads(args.threads)
     device = torch.device(args.device) if args.device else select_device()
     model = load_model(args.resume, device) if args.resume else PolicyValueNet(hidden=args.hidden).to(device)
+    initialization_hash = None
+    if args.resume:
+        digest = hashlib.sha256()
+        with args.resume.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+        initialization_hash = digest.hexdigest()
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
     config = {key: str(value) if isinstance(value, Path) else value for key, value in vars(args).items()}
     config.update(device=str(device), hidden=model.trunk[0].out_channels,
                   parameter_count=sum(parameter.numel() for parameter in model.parameters()),
-                  dirichlet_alpha=0.3, dirichlet_fraction=0.25, c_puct=1.5, neural_batch_size=16)
+                  dirichlet_alpha=0.3, dirichlet_fraction=0.25, c_puct=1.5, neural_batch_size=16,
+                  initialization="checkpoint_weights" if args.resume else "random",
+                  initialization_checkpoint_sha256=initialization_hash,
+                  optimizer_initialization="fresh Adam", replay_initialization="empty",
+                  policy_target="normalized MCTS visit counts for both players",
+                  value_target="self-play outcome from side-to-move perspective; cutoff policy recorded separately")
     logger = RunLogger(args.run_dir, config, torch_version=torch.__version__, source_root=source_root)
     args.checkpoint_dir.mkdir(parents=True, exist_ok=True)
     replay = deque(maxlen=args.replay_capacity)

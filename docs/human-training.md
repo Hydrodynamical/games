@@ -109,3 +109,5 @@ PYTHONPATH=chess .venv/bin/python -m scr.human_report --run-dir runs/hikaru-supe
 ```
 
 The full local run and datasets are ignored by Git. Tracked experiment summaries contain compact evidence and reproduction instructions, while raw downloads and trained weights remain local.
+
+To use a selected supervised model as the starting point for reinforcement learning, follow the [MCTS self-play fine-tuning guide](selfplay-finetuning.md). It separates the new self-play replay buffer from a frozen value benchmark and compares the two checkpoints with equal search budgets.

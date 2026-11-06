@@ -131,6 +131,8 @@ The [first Hikaru experiment](experiments/2026-11-06-hikaru-supervised-01/README
 
 The [continuation experiment](experiments/2026-11-06-hikaru-supervised-02/README.md) tracks full train/validation measurements and stops after three epochs without improved validation policy loss. It selected epoch 3 and stopped at epoch 6 as training loss kept falling but validation loss worsened. The selected model matched Hikaru on 25.8% of the same test positions without search and 25.4% with MCTS. Search won six games, lost none, drew three, and left three unfinished against that model's raw policy. Test value prediction remained weak. The report includes all epoch curves, checkpoint selection, early stopping, and the position inspector.
 
+The [self-play fine-tuning guide](docs/selfplay-finetuning.md) starts MCTS training from a supervised checkpoint with fresh optimizer/replay state. A separate frozen outcome benchmark compares value predictions, while paired games compare both checkpoints with equal MCTS simulation budgets. Reports keep genuine draws and unresolved cutoffs separate and include zero-value baselines, decisive/drawn-game errors, and match histories.
+
 ## Tests
 
 The core and public interfaces can be checked without dependencies:
