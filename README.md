@@ -129,6 +129,8 @@ The [human-training guide](docs/human-training.md) covers downloading 5,000 Hika
 
 The [first Hikaru experiment](experiments/2026-11-06-hikaru-supervised-01/README.md) trained one epoch on 4,006 games, holding out 490 for validation and 504 for testing. On 256 held-out decisions, the trained raw policy matched Hikaru 16.0% of the time versus 13.7% with MCTS. In twelve paired games MCTS won five, lost none, drew three, and left four unfinished. These are small diagnostics, not an Elo rating; probability and value metrics still show substantial room for improvement.
 
+The [continuation experiment](experiments/2026-11-06-hikaru-supervised-02/README.md) tracks full train/validation measurements and stops after three epochs without improved validation policy loss. It selected epoch 3 and stopped at epoch 6 as training loss kept falling but validation loss worsened. The selected model matched Hikaru on 25.8% of the same test positions without search and 25.4% with MCTS. Search won six games, lost none, drew three, and left three unfinished against that model's raw policy. Test value prediction remained weak. The report includes all epoch curves, checkpoint selection, early stopping, and the position inspector.
+
 ## Tests
 
 The core and public interfaces can be checked without dependencies:

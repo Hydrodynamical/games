@@ -1,0 +1,370 @@
+{
+  "schema_version": 1,
+  "status": "completed",
+  "config": {
+    "checkpoint": "runs/2026-11-06-hikaru-supervised-01/checkpoints/best.pt",
+    "checkpoint_sha256": "7ebde1b47910a0345292f108b7ab042c260054691eb85ef102761b1134f5bdb8",
+    "dataset_dir": "data/hikaru-blitz-5000/prepared",
+    "dataset_manifest_sha256": "cd796ee9ce0a541d07565c0bcccd27c2c91ef01aea88d26231ba0dbe7636829e",
+    "split": "test",
+    "max_positions": 256,
+    "seed": 1,
+    "sims": 64,
+    "threads": 4,
+    "device": "cpu",
+    "match_pairs": 6,
+    "max_plies": 160,
+    "root_noise": false,
+    "move_sampling": false,
+    "search_tree_reuse": false,
+    "started_at": "2026-11-06T20:16:12.503737+00:00",
+    "source_sha256": {
+      "play_with_model.py": "3703501086a6f492354f0f2ea3fb8763cb5975b117e1da8a45ef6fdc24488fd1",
+      "chess_engine.py": "49b419f84c718deac6b7ca931ce6a5013d5ade645983c326a7a6ba2e9699b3a2",
+      "rl_interface.py": "074ad291d65b15d5f79673e234fbde6a88c20dbcc78025e9b24a71964368a020",
+      "human_data.py": "8181ee26996afe2da3441da901ba364b2ee93ce82b5aaa0ffa6fa3841672b132",
+      "diagnostics.py": "67e676e41ba96f250e38571664525ce014cba753b01d6c7e5680feb784014eda",
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "download_games.py": "f7ad387b3c67c21d678118d4d3e4031bb0f3369187e594b61d906999cafe8585",
+      "uci.py": "5efa4e2af430ca194a04ea773c052de528475d0e62c635013c54c32f5a4ac82c",
+      "experiment.py": "9a8be548706293b087519a92dfcdff17ddfcdde01354aa11316d6898213f063b",
+      "self_play.py": "cc56c706fa3fb603c3fd0a096e7b5eb2ac72e00bd3237a92b6bd27f8857c7a89",
+      "train.py": "107d150734c954ffe80eb7957054dd523fc65d2f1df9707b19daa3f564d48bf8",
+      "supervised.py": "db575ca8c151d474b3a05a069180fc95380f825e9e782c1f6992eec85b443b56",
+      "main.py": "57fb0c0d158f0d9b6690634201b39c0f7a88a116b4ebeeb329b32b540f93f338",
+      "evaluate_human.py": "e13065e6104a305764495a5a3ff44d4234fb94380516c8e6b38c7944ee8bf0b3",
+      "mcts.py": "71e32df62f2ce3c79afcd27a0998af94263cc0cc6b594c0d553578b0a74e3d95",
+      "human_report.py": "a8f7f057a87b5bd55a0e95a562d57c41f17ec293ebf04f957a84d8a97d712841",
+      "compare_training.py": "3bd89dcbac08e032ac5d79be71a6af321de291786648245ae7c610889c3a0407",
+      "report.py": "fa4b0ae2b3619f414fd5868481aeb803765e72efac377dc6561a4c8b04881f03"
+    }
+  },
+  "limitations": [
+    "Held-out human move agreement measures imitation, not move quality or strength.",
+    "Value labels are observed human outcomes, including resignation and clock effects.",
+    "The tactical suite and small deterministic paired matches do not estimate Elo.",
+    "Cutoff matches are unresolved and excluded from the completed-game score denominator.",
+    "MCTS uses more computation per move; this is not an equal-time comparison.",
+    "Search top-five ties are ordered by mean action value then prior; unvisited moves can appear at small budgets."
+  ],
+  "sampling": {
+    "split": "test",
+    "games": 504,
+    "eligible_positions": 22547,
+    "sampled_positions": 256,
+    "sampled_games": 199,
+    "engine_terminal_exclusions": {},
+    "method": "uniform seeded reservoir over target-player plies; whole-game history replayed"
+  },
+  "tactical_probes": {
+    "scored_positions": 4,
+    "raw_passes": 0,
+    "search_passes": 2,
+    "positions": [
+      {
+        "id": "opening",
+        "label": "Initial position (no single correct move)",
+        "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "player": "w",
+        "value": 0.11494024097919464,
+        "expected_moves": [],
+        "policy_best_move": "b2b3",
+        "search_best_move": "b2b3",
+        "passed": null,
+        "policy_probability_expected": 0,
+        "search_probability_expected": 0,
+        "policy_entropy": 1.867925123765425,
+        "search_entropy": 2.174676521640567,
+        "top_moves": [
+          {
+            "move": "b2b3",
+            "prior": 0.3185192638286617,
+            "search_probability": 0.46875
+          },
+          {
+            "move": "d2d4",
+            "prior": 0.14958354801111184,
+            "search_probability": 0.0625
+          },
+          {
+            "move": "c2c4",
+            "prior": 0.14241893561285138,
+            "search_probability": 0.0625
+          },
+          {
+            "move": "g1f3",
+            "prior": 0.19047033749043804,
+            "search_probability": 0.0625
+          },
+          {
+            "move": "d2d3",
+            "prior": 0.014585648634449588,
+            "search_probability": 0.03125
+          }
+        ],
+        "raw_passed": null,
+        "search_passed": null
+      },
+      {
+        "id": "white_capture_queen",
+        "label": "White can capture an undefended queen",
+        "fen": "4k3/q7/8/8/8/8/8/R3K3 w - - 0 1",
+        "player": "w",
+        "value": -0.7083601355552673,
+        "expected_moves": [
+          "a1a7"
+        ],
+        "policy_best_move": "e1d2",
+        "search_best_move": "e1d2",
+        "passed": false,
+        "policy_probability_expected": 0.022709344810545123,
+        "search_probability_expected": 0.078125,
+        "policy_entropy": 2.168395324403087,
+        "search_entropy": 2.3166905239829827,
+        "top_moves": [
+          {
+            "move": "e1d2",
+            "prior": 0.30315541374062893,
+            "search_probability": 0.28125
+          },
+          {
+            "move": "e1f1",
+            "prior": 0.15963871331032234,
+            "search_probability": 0.109375
+          },
+          {
+            "move": "e1d1",
+            "prior": 0.13290275262009113,
+            "search_probability": 0.09375
+          },
+          {
+            "move": "a1a7",
+            "prior": 0.022709344810545123,
+            "search_probability": 0.078125
+          },
+          {
+            "move": "a1a5",
+            "prior": 0.04012495912262353,
+            "search_probability": 0.0625
+          }
+        ],
+        "raw_passed": false,
+        "search_passed": false
+      },
+      {
+        "id": "black_capture_queen",
+        "label": "Black can capture an undefended queen",
+        "fen": "r3k3/8/8/8/8/8/Q7/4K3 b - - 0 1",
+        "player": "b",
+        "value": 0.510987401008606,
+        "expected_moves": [
+          "a8a2"
+        ],
+        "policy_best_move": "a8a7",
+        "search_best_move": "a8a7",
+        "passed": false,
+        "policy_probability_expected": 0.006991725694988114,
+        "search_probability_expected": 0.0625,
+        "policy_entropy": 2.034396323039925,
+        "search_entropy": 2.483147980361823,
+        "top_moves": [
+          {
+            "move": "a8a7",
+            "prior": 0.34320889297684876,
+            "search_probability": 0.171875
+          },
+          {
+            "move": "a8a6",
+            "prior": 0.0764216066208939,
+            "search_probability": 0.109375
+          },
+          {
+            "move": "e8f8",
+            "prior": 0.07256190024331372,
+            "search_probability": 0.09375
+          },
+          {
+            "move": "a8b8",
+            "prior": 0.21587174505226783,
+            "search_probability": 0.09375
+          },
+          {
+            "move": "a8a5",
+            "prior": 0.023770426420614436,
+            "search_probability": 0.0625
+          }
+        ],
+        "raw_passed": false,
+        "search_passed": false
+      },
+      {
+        "id": "white_mate_in_one",
+        "label": "White can checkmate in one move",
+        "fen": "7k/8/5KQ1/8/8/8/8/8 w - - 0 1",
+        "player": "w",
+        "value": -0.737730085849762,
+        "expected_moves": [
+          "g6g7"
+        ],
+        "policy_best_move": "f6e6",
+        "search_best_move": "g6g7",
+        "passed": true,
+        "policy_probability_expected": 0.04831785257015935,
+        "search_probability_expected": 0.59375,
+        "policy_entropy": 1.8631897020326549,
+        "search_entropy": 1.873328964113216,
+        "top_moves": [
+          {
+            "move": "g6g7",
+            "prior": 0.04831785257015935,
+            "search_probability": 0.59375
+          },
+          {
+            "move": "f6e6",
+            "prior": 0.4807346980529174,
+            "search_probability": 0.078125
+          },
+          {
+            "move": "g6d3",
+            "prior": 4.866725623629993e-06,
+            "search_probability": 0.015625
+          },
+          {
+            "move": "f6e7",
+            "prior": 0.05227353338235504,
+            "search_probability": 0.015625
+          },
+          {
+            "move": "f6f7",
+            "prior": 0.09880479263398215,
+            "search_probability": 0.015625
+          }
+        ],
+        "raw_passed": false,
+        "search_passed": true
+      },
+      {
+        "id": "black_mate_in_one",
+        "label": "Black can checkmate in one move",
+        "fen": "8/8/8/8/8/5kq1/8/7K b - - 0 1",
+        "player": "b",
+        "value": 0.9821552038192749,
+        "expected_moves": [
+          "g3g2"
+        ],
+        "policy_best_move": "f3e3",
+        "search_best_move": "g3g2",
+        "passed": true,
+        "policy_probability_expected": 0.18740187932118563,
+        "search_probability_expected": 0.609375,
+        "policy_entropy": 2.0287009327487704,
+        "search_entropy": 1.8532419048256026,
+        "top_moves": [
+          {
+            "move": "g3g2",
+            "prior": 0.18740187932118563,
+            "search_probability": 0.609375
+          },
+          {
+            "move": "f3e3",
+            "prior": 0.2850826733411379,
+            "search_probability": 0.046875
+          },
+          {
+            "move": "f3f2",
+            "prior": 0.2207505892831274,
+            "search_probability": 0.03125
+          },
+          {
+            "move": "g3g6",
+            "prior": 0.00044189176059294526,
+            "search_probability": 0.015625
+          },
+          {
+            "move": "g3g7",
+            "prior": 0.005962652264598566,
+            "search_probability": 0.015625
+          }
+        ],
+        "raw_passed": false,
+        "search_passed": true
+      },
+      {
+        "id": "bare_kings",
+        "label": "Kings only: known draw",
+        "fen": "4k3/8/8/8/8/8/8/4K3 w - - 0 1",
+        "player": "w",
+        "value": -0.7724197506904602,
+        "expected_moves": [],
+        "policy_best_move": null,
+        "search_best_move": null,
+        "passed": null,
+        "policy_probability_expected": 0,
+        "search_probability_expected": 0,
+        "policy_entropy": 0,
+        "search_entropy": 0,
+        "top_moves": [],
+        "expected_value": 0.0,
+        "raw_passed": null,
+        "search_passed": null
+      }
+    ]
+  },
+  "heldout": {
+    "all": {
+      "positions": 256,
+      "raw_top1": 0.16015625,
+      "search_top1": 0.13671875,
+      "raw_top5": 0.4609375,
+      "search_top5": 0.3984375,
+      "move_change_fraction": 0.390625,
+      "raw_legal_nll": 3.3265417044603964,
+      "value_mse": 0.9009153382143171,
+      "zero_value_baseline_mse": 0.90234375,
+      "mean_raw_seconds": 0.001266334958927473,
+      "mean_search_seconds": 0.05401714487834397
+    },
+    "opening": {
+      "positions": 58,
+      "raw_top1": 0.3103448275862069,
+      "search_top1": 0.20689655172413793,
+      "raw_top5": 0.7586206896551724,
+      "search_top5": 0.5517241379310345,
+      "move_change_fraction": 0.2413793103448276,
+      "raw_legal_nll": 2.2471722023368907,
+      "value_mse": 0.6456832491323159,
+      "zero_value_baseline_mse": 0.9137931034482759,
+      "mean_raw_seconds": 0.0012935336703306128,
+      "mean_search_seconds": 0.0557551638600577
+    },
+    "later": {
+      "positions": 198,
+      "raw_top1": 0.11616161616161616,
+      "search_top1": 0.11616161616161616,
+      "raw_top5": 0.37373737373737376,
+      "search_top5": 0.35353535353535354,
+      "move_change_fraction": 0.43434343434343436,
+      "raw_legal_nll": 3.642720649526878,
+      "value_mse": 0.9756802936019741,
+      "zero_value_baseline_mse": 0.898989898989899,
+      "mean_raw_seconds": 0.0012583676596275633,
+      "mean_search_seconds": 0.05350802820693287
+    }
+  },
+  "matches": {
+    "games": 12,
+    "completed_games": 8,
+    "unresolved_cutoffs": 4,
+    "mcts_wins": 5,
+    "policy_wins": 0,
+    "actual_draws": 3,
+    "mcts_score_on_completed_games": 0.8125,
+    "termination_counts": {
+      "threefold_repetition": 3,
+      "checkmate": 5,
+      "move_limit": 4
+    }
+  },
+  "duration_seconds": 74.91390720906202,
+  "updated_at": "2026-11-06T20:17:27.421851+00:00"
+}

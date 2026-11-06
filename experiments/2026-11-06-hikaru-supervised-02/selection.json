@@ -1,0 +1,15 @@
+{
+  "selected_at": "2026-11-06T21:09:51.073949+00:00",
+  "criterion": "minimum full validation policy NLL",
+  "test_used_for_selection": false,
+  "best_epoch": 3,
+  "best_validation_nll": 3.617194704310491,
+  "completed_epoch": 6,
+  "stop_reason": "patience_exhausted",
+  "checkpoint": "checkpoints/best.pt",
+  "checkpoint_sha256": "b6360d2b1de42fc704813248946830394bd3eccafa0ab251fd997f627abef12a",
+  "checkpoint_tensors_equal_epoch": 3,
+  "validation_history_sha256": "6e7ba35b53cf45c5fdd41ecfe1846581a472d7667e303b661de15c52b0296414",
+  "dataset_manifest_sha256": "cd796ee9ce0a541d07565c0bcccd27c2c91ef01aea88d26231ba0dbe7636829e",
+  "protocol_sha256": "3ce01dab21c5bdb60543f2d0bb9882551da854120bb8938272c68d15811182e4"
+}

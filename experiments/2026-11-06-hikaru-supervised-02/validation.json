@@ -1,0 +1,170 @@
+[
+  {
+    "epoch": 1,
+    "step": 2768,
+    "validation": {
+      "policy_sample_count": 22076,
+      "value_sample_count": 43968,
+      "policy_nll_full_action": 4.431276849828611,
+      "policy_top1_full_action": 0.14472730567131728,
+      "policy_top5_full_action": 0.3406414205472006,
+      "value_mse": 0.8702287933581782,
+      "value_mae": 0.6875815008817108,
+      "zero_value_baseline_mse": 0.8948553493449781,
+      "predicted_value_mean": 0.026801051708884548,
+      "target_value_mean": 0.004798944687045123
+    },
+    "training_evaluation": {
+      "policy_sample_count": 176913,
+      "value_sample_count": 352305,
+      "policy_nll_full_action": 4.089333507044943,
+      "policy_top1_full_action": 0.16392803242271625,
+      "policy_top5_full_action": 0.3959516824653926,
+      "value_mse": 0.8872892013714239,
+      "value_mae": 0.6913036658911381,
+      "zero_value_baseline_mse": 0.9065667532393806,
+      "predicted_value_mean": 0.020763061855083663,
+      "target_value_mean": 0.005092178652020267
+    }
+  },
+  {
+    "epoch": 2,
+    "step": 5536,
+    "validation": {
+      "policy_sample_count": 22076,
+      "value_sample_count": 43968,
+      "policy_nll_full_action": 3.71070226851441,
+      "policy_top1_full_action": 0.19804312375430333,
+      "policy_top5_full_action": 0.44985504620402245,
+      "value_mse": 0.9950636455238819,
+      "value_mae": 0.7746417843445246,
+      "zero_value_baseline_mse": 0.8948553493449781,
+      "predicted_value_mean": -0.03746397073788696,
+      "target_value_mean": 0.004798944687045123
+    },
+    "training_evaluation": {
+      "policy_sample_count": 176913,
+      "value_sample_count": 352305,
+      "policy_nll_full_action": 2.8002963486651864,
+      "policy_top1_full_action": 0.2900069525699072,
+      "policy_top5_full_action": 0.6216614946329552,
+      "value_mse": 0.8709024300435635,
+      "value_mae": 0.7059299234871164,
+      "zero_value_baseline_mse": 0.9065667532393806,
+      "predicted_value_mean": -0.03814633380512177,
+      "target_value_mean": 0.005092178652020267
+    }
+  },
+  {
+    "epoch": 3,
+    "step": 8304,
+    "validation": {
+      "policy_sample_count": 22076,
+      "value_sample_count": 43968,
+      "policy_nll_full_action": 3.617194704310491,
+      "policy_top1_full_action": 0.213670954883131,
+      "policy_top5_full_action": 0.4771244790722957,
+      "value_mse": 0.8731366439005347,
+      "value_mae": 0.7292057270783351,
+      "zero_value_baseline_mse": 0.8948553493449781,
+      "predicted_value_mean": 0.017442080931090023,
+      "target_value_mean": 0.004798944687045123
+    },
+    "training_evaluation": {
+      "policy_sample_count": 176913,
+      "value_sample_count": 352305,
+      "policy_nll_full_action": 2.221419610981108,
+      "policy_top1_full_action": 0.40072804146670965,
+      "policy_top5_full_action": 0.7507531950732846,
+      "value_mse": 0.7381303599700741,
+      "value_mae": 0.655053941201711,
+      "zero_value_baseline_mse": 0.9065667532393806,
+      "predicted_value_mean": 0.01234228477674823,
+      "target_value_mean": 0.005092178652020267
+    }
+  },
+  {
+    "epoch": 4,
+    "step": 11072,
+    "validation": {
+      "policy_sample_count": 22076,
+      "value_sample_count": 43968,
+      "policy_nll_full_action": 3.7869747878632958,
+      "policy_top1_full_action": 0.22055626019206379,
+      "policy_top5_full_action": 0.48428157274868633,
+      "value_mse": 0.8668352395480463,
+      "value_mae": 0.6876024447891216,
+      "zero_value_baseline_mse": 0.8948553493449781,
+      "predicted_value_mean": -0.03563977164125512,
+      "target_value_mean": 0.004798944687045123
+    },
+    "training_evaluation": {
+      "policy_sample_count": 176913,
+      "value_sample_count": 352305,
+      "policy_nll_full_action": 1.854007570371189,
+      "policy_top1_full_action": 0.4815813422416668,
+      "policy_top5_full_action": 0.8239756264378536,
+      "value_mse": 0.6638909205419802,
+      "value_mae": 0.5745744290636572,
+      "zero_value_baseline_mse": 0.9065667532393806,
+      "predicted_value_mean": -0.03972799892319695,
+      "target_value_mean": 0.005092178652020267
+    }
+  },
+  {
+    "epoch": 5,
+    "step": 13840,
+    "validation": {
+      "policy_sample_count": 22076,
+      "value_sample_count": 43968,
+      "policy_nll_full_action": 4.292671790436615,
+      "policy_top1_full_action": 0.22354593223410038,
+      "policy_top5_full_action": 0.48278673672766803,
+      "value_mse": 0.8207293946290554,
+      "value_mae": 0.6465412440778907,
+      "zero_value_baseline_mse": 0.8948553493449781,
+      "predicted_value_mean": -0.007521161744493064,
+      "target_value_mean": 0.004798944687045123
+    },
+    "training_evaluation": {
+      "policy_sample_count": 176913,
+      "value_sample_count": 352305,
+      "policy_nll_full_action": 1.5099332838873052,
+      "policy_top1_full_action": 0.5623611605704499,
+      "policy_top5_full_action": 0.8769847326086834,
+      "value_mse": 0.6127568724283211,
+      "value_mae": 0.5226029609290861,
+      "zero_value_baseline_mse": 0.9065667532393806,
+      "predicted_value_mean": -0.006204858203142769,
+      "target_value_mean": 0.005092178652020267
+    }
+  },
+  {
+    "epoch": 6,
+    "step": 16608,
+    "validation": {
+      "policy_sample_count": 22076,
+      "value_sample_count": 43968,
+      "policy_nll_full_action": 4.557435254986724,
+      "policy_top1_full_action": 0.2267620945823519,
+      "policy_top5_full_action": 0.4827414386664251,
+      "value_mse": 0.9050801728338307,
+      "value_mae": 0.709102421912217,
+      "zero_value_baseline_mse": 0.8948553493449781,
+      "predicted_value_mean": -0.020970367071431625,
+      "target_value_mean": 0.004798944687045123
+    },
+    "training_evaluation": {
+      "policy_sample_count": 176913,
+      "value_sample_count": 352305,
+      "policy_nll_full_action": 1.3242948003860842,
+      "policy_top1_full_action": 0.6071176227863413,
+      "policy_top5_full_action": 0.9050211120720354,
+      "value_mse": 0.5332992874691003,
+      "value_mae": 0.5011298384573527,
+      "zero_value_baseline_mse": 0.9065667532393806,
+      "predicted_value_mean": -0.02161893138511803,
+      "target_value_mean": 0.005092178652020267
+    }
+  }
+]

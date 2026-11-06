@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "status": "reused_identical_model",
+  "created_at": "2026-11-06T20:34:03.737368+00:00",
+  "source_directory": "runs/2026-11-06-hikaru-supervised-01/eval-final",
+  "source_evaluation_checkpoint": "runs/2026-11-06-hikaru-supervised-01/checkpoints/best.pt",
+  "source_evaluation_checkpoint_sha256": "7ebde1b47910a0345292f108b7ab042c260054691eb85ef102761b1134f5bdb8",
+  "source_epoch_checkpoint": "runs/2026-11-06-hikaru-supervised-01/checkpoints/epoch_1.pt",
+  "source_epoch_checkpoint_sha256": "680e2651c7056e90117fa78524e7d91717e632088cc52e28f92db2252f184b48",
+  "new_initial_checkpoint": "runs/2026-11-06-hikaru-supervised-02/checkpoints/initial.pt",
+  "new_initial_checkpoint_sha256": "5393537cfe6dfac0a7aea80de18407ff08132b388498f76feae87ca7271b388f",
+  "epoch": 1,
+  "tensor_equality_verification": {
+    "method": "torch.equal on every state_dict tensor, with identical key sets",
+    "old_evaluation_equals_epoch_1": true,
+    "old_evaluation_equals_new_initial": true,
+    "verified_tensors": 16,
+    "verified_elements": 10030913
+  },
+  "copied_files_sha256": {
+    "summary.json": "43b6873f7e094682d133fe960d8acdfb662d15a592bf6d870d149b839b101473",
+    "positions.jsonl": "1020e207f75b72ecd8ba401b41b04207032e6bb377e35b04c4fb419a9c411196",
+    "config.json": "e5614a6140691cf89a0fc222214ef2f7d7502c708fd0142b87eb73b878355dad",
+    "matches.jsonl": "4f4d93b826fb1443a8692ab62eae82b9b38c8c3944e8ac62d62e4c0a6f96d954"
+  },
+  "note": "Evaluation outputs copied byte for byte; source config is preserved. No new test evaluation was run for the resumed initial checkpoint."
+}

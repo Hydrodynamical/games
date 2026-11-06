@@ -1,0 +1,22 @@
+{
+  "source_run": "runs/2026-11-06-hikaru-supervised-02",
+  "normalization": "Absolute workspace paths in JSON are replaced with repository-relative paths. JSONL files are copied unchanged. Source hashes below refer to original local artifacts.",
+  "source_sha256": {
+    "config.json": "6f181d979af6959dcc7584ee0ad971e2d4d64dff4efa9e011182a10c027dc737",
+    "dataset_manifest.json": "cd796ee9ce0a541d07565c0bcccd27c2c91ef01aea88d26231ba0dbe7636829e",
+    "summary.json": "6c725678798e8608fd90a5fb135d62cf20bd20c9378dad31aa769016cdf37d5b",
+    "validation.json": "6e7ba35b53cf45c5fdd41ecfe1846581a472d7667e303b661de15c52b0296414",
+    "updates.jsonl": "9946ed1ea12e19c03fa7d34c9ba3c807e2511d41ce2cec09b2c01b24c6c1d82b",
+    "selection.json": "c3edf5d50c013985da0386cd1226b11ed5b6198a98c468c1ca8aee685240498c",
+    "audit.json": "f4820e05eff7b95548b2f0ad8da78de746c1f74da89ce751886788c1da49bf5d",
+    "eval-initial/config.json": "e5614a6140691cf89a0fc222214ef2f7d7502c708fd0142b87eb73b878355dad",
+    "eval-initial/summary.json": "43b6873f7e094682d133fe960d8acdfb662d15a592bf6d870d149b839b101473",
+    "eval-initial/positions.jsonl": "1020e207f75b72ecd8ba401b41b04207032e6bb377e35b04c4fb419a9c411196",
+    "eval-initial/matches.jsonl": "4f4d93b826fb1443a8692ab62eae82b9b38c8c3944e8ac62d62e4c0a6f96d954",
+    "eval-initial/reuse.json": "e2bedbe27e070520f3c0addc60e0c6fe829596b048dbc35cb5b0f99928f1a7a4",
+    "eval-final/config.json": "15e42065f0c098c2b99df83b9f8b8532075979b2511e003731171bf273b3bcf7",
+    "eval-final/summary.json": "c0b679a802fc0ea8116a739e13673c9082c811bda3ff64a5167fdce10ea762ca",
+    "eval-final/positions.jsonl": "b54e1b17742eaaa9b78f778ed42aed5839fdb05845cb3ce32aa03d9fb84ff965",
+    "eval-final/matches.jsonl": "6b9d4c75044a51e1d62f3d21bb0baa79a99c1b8f884180d2fabee0ffc1cb7181"
+  }
+}

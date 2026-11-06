@@ -125,6 +125,8 @@ def main():
     status = summary.get("status", "not recorded")
     completed = status in {"completed", "early_stopped"}
     best_label = f"Selected epoch {best_epoch}" if completed else f"Best so far: epoch {best_epoch}"
+    status_label = (f"early stop after {summary['epochs_without_improvement']} epochs without improvement"
+                    if summary.get("stopped_early") else f"status: {status}")
 
     fig = plt.figure(figsize=(15, 11.7), facecolor="#FAFCFD")
     grid = fig.add_gridspec(2, 2, left=.10, right=.96, top=.79, bottom=.18,
@@ -140,7 +142,7 @@ def main():
         subtitle = "Same human-game dataset and chronological splits · continued optimizer state · fixed-checkpoint evaluation"
     fig.text(.035, .914, subtitle, fontsize=11.5, color=MUTED)
     fig.text(.035, .878, f"Resumed epoch {start_epoch} → completed epoch {last_epoch} · "
-             f"{best_label} by minimum validation policy NLL ({best_nll:.3f}) · status: {status}",
+             f"{best_label} by validation policy NLL ({best_nll:.3f}) · {status_label}",
              fontsize=11, color=MUTED)
 
     # A: both curves evaluate a fixed checkpoint over its complete split.
@@ -159,8 +161,10 @@ def main():
     ax.set_xlabel("Absolute training epoch", labelpad=9)
     ax.set_ylabel("Full-action negative log likelihood (nats)", labelpad=9)
     ax.legend(frameon=False, fontsize=9, loc="lower left")
-    ax.text(0, -.25, "All 4,480 actions; only Hikaru's turns. Each point uses fixed weights.\n"
-            "A falling train loss with worsening validation is evidence of overfitting.",
+    policy_note = "A falling train loss with worsening validation is evidence of overfitting."
+    if completed and history[-1]["validation"]["policy_nll_full_action"] > best_nll:
+        policy_note = f"Validation worsens after epoch {best_epoch} while training loss falls: overfitting."
+    ax.text(0, -.25, "All 4,480 actions; only Hikaru's turns. Each point uses fixed weights.\n" + policy_note,
             transform=ax.transAxes, fontsize=9.2, color=MUTED, va="top", linespacing=1.5)
 
     # B: genuine full-split values; never reuse online losses from changing weights.
@@ -179,8 +183,12 @@ def main():
     ax.set_xlabel("Absolute training epoch", labelpad=9)
     ax.set_ylabel("Mean squared error · lower is better", labelpad=9)
     ax.legend(frameon=False, fontsize=8.8, loc="lower left")
-    ax.text(0, -.25, "Both players' positions; results include resignations and clock effects.\n"
-            "The selected epoch minimizes policy NLL, not value error.",
+    value_note = ("Both players' positions; results include resignations and clock effects.\n"
+                  "The selected epoch minimizes policy NLL, not value error.")
+    if has_evaluation:
+        value_note += (f"\nSelected test value MSE: {final['heldout']['all']['value_mse']:.3f}; "
+                       f"always-zero baseline: {final['heldout']['all']['zero_value_baseline_mse']:.3f}.")
+    ax.text(0, -.25, value_note,
             transform=ax.transAxes, fontsize=9.2, color=MUTED, va="top", linespacing=1.5)
 
     # C: final tests are observational after validation-based checkpoint selection.
@@ -213,8 +221,6 @@ def main():
     # D: paired deterministic games are a small diagnostic, not an Elo test.
     ax = fig.add_subplot(grid[1, 1])
     style(ax, "D   Same-checkpoint matches: MCTS against policy")
-    ax.set_title("D   Same-checkpoint matches: MCTS against policy", loc="left",
-                 fontsize=12, fontweight="bold", pad=30)
     if has_evaluation and initial["matches"]["games"] and final["matches"]["games"]:
         match_rows = [initial["matches"], final["matches"]]
         categories = [("mcts_wins", "MCTS wins", BLUE), ("policy_wins", "Policy wins", ORANGE),
@@ -234,7 +240,7 @@ def main():
                             bbox={"facecolor": color, "edgecolor": "none", "pad": 1})
             left += values
         ax.set_yticks([0, 1], [f"Epoch {start_epoch}", f"Selected {best_epoch}"])
-        ax.invert_yaxis()
+        ax.set_ylim(1.5, -.65)
         ax.set_xlim(0, max(row["games"] for row in match_rows) + .35)
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         ax.grid(False, axis="y")
@@ -243,7 +249,7 @@ def main():
         ax.legend(handles=[Patch(facecolor=color, label=label,
                                  hatch="///" if key == "unresolved_cutoffs" else None)
                            for key, label, color in categories],
-                  frameon=False, fontsize=8.7, loc="lower left", bbox_to_anchor=(0, 1.0), ncol=4,
+                  frameon=False, fontsize=8.7, loc="upper left", ncol=4,
                   handlelength=1.2, columnspacing=1)
         ax.text(0, -.25, "Cutoff games remain unresolved; they are not counted as draws.\n"
                 "MCTS spends more computation per move. Small match samples do not establish Elo.",
