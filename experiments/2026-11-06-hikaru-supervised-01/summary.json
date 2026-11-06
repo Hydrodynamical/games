@@ -1,0 +1,59 @@
+{
+  "status": "completed",
+  "completed_epoch": 1,
+  "optimizer_steps": 2768,
+  "initial_validation": {
+    "policy_sample_count": 22076,
+    "value_sample_count": 43968,
+    "policy_nll_full_action": 8.408979339516666,
+    "policy_top1_full_action": 9.05961224859576e-05,
+    "policy_top5_full_action": 0.0004076825511868092,
+    "value_mse": 0.8968382522198094,
+    "value_mae": 0.8992454638973074,
+    "zero_value_baseline_mse": 0.8948553493449781,
+    "predicted_value_mean": -0.039812475372393234,
+    "target_value_mean": 0.004798944687045123
+  },
+  "epochs": [
+    {
+      "epoch": 1,
+      "step": 2768,
+      "policy_samples": 176913,
+      "value_samples": 352305,
+      "policy_loss": 5.43063287846356,
+      "value_loss": 0.5793441943432311,
+      "validation": {
+        "policy_sample_count": 22076,
+        "value_sample_count": 43968,
+        "policy_nll_full_action": 4.431276849828611,
+        "policy_top1_full_action": 0.14472730567131728,
+        "policy_top5_full_action": 0.3406414205472006,
+        "value_mse": 0.8702287933581782,
+        "value_mae": 0.6875815008817108,
+        "zero_value_baseline_mse": 0.8948553493449781,
+        "predicted_value_mean": 0.026801051708884548,
+        "target_value_mean": 0.004798944687045123
+      },
+      "duration_seconds": 350.25513908301946
+    }
+  ],
+  "checkpoints": [
+    "runs/2026-11-06-hikaru-supervised-01/checkpoints/epoch_1.pt"
+  ],
+  "last_validation": {
+    "policy_sample_count": 22076,
+    "value_sample_count": 43968,
+    "policy_nll_full_action": 4.431276849828611,
+    "policy_top1_full_action": 0.14472730567131728,
+    "policy_top5_full_action": 0.3406414205472006,
+    "value_mse": 0.8702287933581782,
+    "value_mae": 0.6875815008817108,
+    "zero_value_baseline_mse": 0.8948553493449781,
+    "predicted_value_mean": 0.026801051708884548,
+    "target_value_mean": 0.004798944687045123
+  },
+  "duration_seconds": 350.43669379199855,
+  "final_checkpoint": "runs/2026-11-06-hikaru-supervised-01/checkpoints/final.pt",
+  "best_checkpoint": "runs/2026-11-06-hikaru-supervised-01/checkpoints/best.pt",
+  "completed_at": "2026-11-06T20:15:52.941594+00:00"
+}

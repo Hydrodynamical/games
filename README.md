@@ -121,6 +121,14 @@ The [first recorded experiment](experiments/2026-11-06-inspection-01/README.md) 
 
 The [matched cutoff-value comparison](experiments/2026-11-06-cutoff-value-mask-01/README.md) reruns that setup while excluding unfinished positions from value loss. All 800 cutoff positions remain available for policy training. Both models solve 2/4 tactical checks and neither beats always-zero value predictions on the six common labeled examples; the small run does not establish a learning benefit. The reusable `scr.compare_training` command checks matching initialization/configuration and compares saved models on identical inputs.
 
+## Learn from human games
+
+The supervised pipeline downloads a selected player's completed, rated Chess.com blitz games, validates PGNs, and makes chronological train/validation/test splits. It trains move prediction only on the selected player's turns and value prediction on both sides' observed outcomes. The resulting checkpoint works with the existing MCTS.
+
+The [human-training guide](docs/human-training.md) covers downloading 5,000 Hikaru games, bounded-memory preprocessing, supervised training, epoch-boundary recovery, and a comparison of the same model with and without MCTS on held-out positions, tactical probes, and paired games.
+
+The [first Hikaru experiment](experiments/2026-11-06-hikaru-supervised-01/README.md) trained one epoch on 4,006 games, holding out 490 for validation and 504 for testing. On 256 held-out decisions, the trained raw policy matched Hikaru 16.0% of the time versus 13.7% with MCTS. In twelve paired games MCTS won five, lost none, drew three, and left four unfinished. These are small diagnostics, not an Elo rating; probability and value metrics still show substantial room for improvement.
+
 ## Tests
 
 The core and public interfaces can be checked without dependencies:
