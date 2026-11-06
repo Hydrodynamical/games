@@ -60,10 +60,13 @@ def positive_float(value: str) -> float:
     return result
 
 
-def replay_summary(replay):
+def replay_summary(replay, cutoff_value_policy="exclude"):
     counts = Counter("cutoff" if item[3] else "draw" if item[2] == 0 else "decisive" for item in replay)
+    excluded = counts["cutoff"] if cutoff_value_policy == "exclude" else 0
     return {"positions": len(replay), "cutoff_positions": counts["cutoff"],
-            "draw_positions": counts["draw"], "decisive_positions": counts["decisive"]}
+            "draw_positions": counts["draw"], "decisive_positions": counts["decisive"],
+            "policy_target_positions": len(replay), "value_target_positions": len(replay) - excluded,
+            "excluded_value_positions": excluded}
 
 
 def main(argv=None):
@@ -85,6 +88,8 @@ def main(argv=None):
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--learning-rate", type=positive_float, default=1e-3)
+    parser.add_argument("--cutoff-value-policy", choices=("exclude", "draw"), default="exclude",
+                        help="Keep cutoffs for policy; exclude their value loss (default), or reproduce legacy zero labels")
     parser.add_argument("--trace-every", type=nonnegative_int, default=10,
                         help="Trace first game and every Nth game; 1 traces all, 0 disables")
     parser.add_argument("--probe-every", type=nonnegative_int, default=5,
@@ -122,7 +127,12 @@ def main(argv=None):
     step = 0
     print(f"Run directory: {args.run_dir}", flush=True)
     print(f"Training on {device}; {args.iterations} games, {args.sims} simulations/ply", flush=True)
-    print("Move-limit cutoffs are recorded separately; their value targets remain zero.", flush=True)
+    print("Move-limit positions train policy only; their value loss is excluded."
+          if args.cutoff_value_policy == "exclude"
+          else "Legacy control: move-limit positions train both policy and zero-valued outcomes.", flush=True)
+
+    def replay_state():
+        return replay_summary(replay, args.cutoff_value_policy)
 
     def checkpoint(game):
         path = args.checkpoint_dir / f"policy_value_net_{game}.pt"
@@ -153,11 +163,12 @@ def main(argv=None):
                 max_moves=args.max_moves, show_progress=args.progress,
                 return_info=True, record_trace=trace,
             )
+            info["value_target_available"] = not info["truncated"] or args.cutoff_value_policy == "draw"
             for state, policy, player in game_data:
                 value = result if player == "w" else -result
                 replay.append((state.detach().cpu(), policy.detach().cpu(), float(value), info["truncated"]))
             logger.game(dict(info, game=iteration, step_before_updates=step, replay_size=len(replay)))
-            summary = logger.refresh(replay=replay_summary(replay))
+            summary = logger.refresh(replay=replay_state())
             print(f"Game {iteration}/{args.iterations}: {info['plies']} plies; {info['termination']}; "
                   f"outcome={info['outcome']}; cutoffs={summary['move_limit_games']}/{iteration}; "
                   f"replay={len(replay)}", flush=True)
@@ -165,18 +176,30 @@ def main(argv=None):
                 for _ in range(args.updates):
                     records = random.sample(list(replay), min(args.batch_size, len(replay)))
                     batch = [(state, policy, value) for state, policy, value, _ in records]
+                    value_mask = [not record[3] or args.cutoff_value_policy == "draw" for record in records]
+                    eligible = [record for record, selected in zip(records, value_mask) if selected]
                     started = time.monotonic()
-                    stats = train_step(model, optimizer, batch, device)
+                    stats = train_step(model, optimizer, batch, device, value_mask=value_mask)
                     step += 1
                     logger.update(dict(stats, game=iteration, step=step, batch_size=len(batch),
                                        buffer_size=len(replay), duration_seconds=time.monotonic() - started,
                                        cutoff_target_fraction=sum(record[3] for record in records) / len(records),
+                                       excluded_value_fraction=1 - len(eligible) / len(records),
+                                       cutoff_value_target_fraction=(sum(record[3] for record in eligible) / len(eligible)
+                                                                     if eligible else None),
+                                       value_target_win_fraction=(sum(record[2] > 0 for record in eligible) / len(eligible)
+                                                                  if eligible else None),
+                                       value_target_loss_fraction=(sum(record[2] < 0 for record in eligible) / len(eligible)
+                                                                   if eligible else None),
+                                       value_target_draw_fraction=(sum(record[2] == 0 for record in eligible) / len(eligible)
+                                                                   if eligible else None),
                                        target_win_fraction=sum(record[2] > 0 for record in records) / len(records),
                                        target_loss_fraction=sum(record[2] < 0 for record in records) / len(records),
                                        actual_draw_target_fraction=sum(record[2] == 0 and not record[3]
                                                                        for record in records) / len(records)))
                 print(f"Step {step}: policy loss={stats['policy_loss']:.4f}; "
                       f"value loss={stats['value_loss']:.4f}; policy KL={stats['policy_kl']:.4f}; "
+                      f"value samples={stats['value_sample_count']}/{stats['policy_sample_count']}; "
                       f"gradient norm={stats['gradient_norm']:.4f}", flush=True)
             else:
                 print(f"Warmup: {len(replay)}/{args.min_buffer} positions", flush=True)
@@ -184,15 +207,15 @@ def main(argv=None):
                 probes(iteration)
             if iteration % args.save_every == 0 or iteration == args.iterations:
                 checkpoint(iteration)
-            logger.refresh(replay=replay_summary(replay))
+            logger.refresh(replay=replay_state())
             if iteration % args.report_every == 0:
                 generate_report(args.run_dir)
-        summary = logger.refresh("completed", replay=replay_summary(replay))
+        summary = logger.refresh("completed", replay=replay_state())
         report = generate_report(args.run_dir)
         print(f"Completed: {summary['termination_counts']}; {step} updates. Report: {report}", flush=True)
     except BaseException as exc:
         status = "interrupted" if isinstance(exc, KeyboardInterrupt) else "failed"
-        logger.refresh(status, error=f"{type(exc).__name__}: {exc}", replay=replay_summary(replay))
+        logger.refresh(status, error=f"{type(exc).__name__}: {exc}", replay=replay_state())
         try:
             generate_report(args.run_dir)
         except Exception:

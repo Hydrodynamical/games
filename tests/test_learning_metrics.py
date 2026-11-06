@@ -69,7 +69,10 @@ class LearningMetricTests(unittest.TestCase):
         self.assertAlmostEqual(metrics["learning_rate"], .03)
         for actual, expected in zip(model.parameters(), reference.parameters()):
             self.assertTrue(torch.equal(actual, expected))
-        self.assertTrue(all(isinstance(value, float) and math.isfinite(value) for value in metrics.values()))
+        self.assertTrue(all(isinstance(value, (float, int, bool)) and math.isfinite(value) for value in metrics.values()))
+        self.assertEqual(metrics["policy_sample_count"], 2)
+        self.assertEqual(metrics["value_sample_count"], 2)
+        self.assertTrue(metrics["value_metrics_available"])
         json.dumps(metrics, allow_nan=False)
 
     def test_single_example_std_is_zero(self):

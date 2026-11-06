@@ -66,13 +66,44 @@ class TrainingRunTests(unittest.TestCase):
             self.assertEqual(summary["termination_counts"], {"move_limit": 2})
             self.assertEqual(summary["optimizer_steps"], 2)
             self.assertEqual(summary["replay"]["cutoff_positions"], 4)
+            self.assertEqual(summary["replay"]["policy_target_positions"], 4)
+            self.assertEqual(summary["replay"]["value_target_positions"], 0)
+            self.assertEqual(summary["policy_samples_seen"], 4)
+            self.assertEqual(summary["value_samples_seen"], 0)
+            self.assertEqual(summary["cutoff_value_policy"], "exclude")
             games = [json.loads(line) for line in (directory / "games.jsonl").read_text().splitlines()]
             self.assertEqual(len(games[0]["trace"]), 2)
+            self.assertTrue(all(row["value_target_available"] is False for row in games))
             updates = [json.loads(line) for line in (directory / "updates.jsonl").read_text().splitlines()]
             self.assertTrue(all(row["cutoff_target_fraction"] == 1 for row in updates))
+            self.assertTrue(all(row["policy_sample_count"] == 2 for row in updates))
+            self.assertTrue(all(row["value_sample_count"] == 0 for row in updates))
+            self.assertTrue(all(row["value_mae"] is None for row in updates))
+            self.assertTrue(all(row["value_loss"] == 0 for row in updates))
             self.assertTrue((directory / "report.html").is_file())
             self.assertTrue((directory / "checkpoints/policy_value_net_0.pt").is_file())
             self.assertTrue((directory / "checkpoints/policy_value_net_2.pt").is_file())
+
+    def test_legacy_draw_control_keeps_cutoff_value_targets(self):
+        from scr.main import main
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / "draw-control"
+            main(["--iterations", "1", "--sims", "2", "--max-moves", "2",
+                  "--hidden", "8", "--batch-size", "2", "--min-buffer", "1",
+                  "--updates", "1", "--threads", "1", "--device", "cpu",
+                  "--run-dir", str(directory), "--probe-every", "0", "--trace-every", "0",
+                  "--cutoff-value-policy", "draw"])
+            summary = json.loads((directory / "summary.json").read_text())
+            self.assertEqual(summary["cutoff_value_policy"], "draw")
+            self.assertEqual(summary["excluded_value_positions"], 0)
+            self.assertEqual(summary["policy_samples_seen"], 2)
+            self.assertEqual(summary["value_samples_seen"], 2)
+            game = json.loads((directory / "games.jsonl").read_text())
+            self.assertTrue(game["value_target_available"])
+            update = json.loads((directory / "updates.jsonl").read_text())
+            self.assertEqual(update["value_sample_count"], 2)
+            self.assertEqual(update["zero_value_baseline_mse"], 0)
+            self.assertEqual(update["value_target_draw_fraction"], 1)
 
 
 if __name__ == "__main__":

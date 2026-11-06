@@ -12,6 +12,7 @@ Reproduce with a new run directory:
 .venv/bin/python chess/scr/main.py \
   --iterations 12 --sims 64 --max-moves 200 --hidden 128 \
   --batch-size 64 --min-buffer 256 --updates 2 --seed 1 --device cpu --threads 4 \
+  --cutoff-value-policy draw \
   --run-dir runs/inspection-reproduction --trace-every 1 \
   --probe-every 4 --probe-sims 80 --save-every 4 --report-every 1
 ```
@@ -59,3 +60,5 @@ All 1,874 recorded moves and final ending classifications were independently che
 ## What to investigate next
 
 Keep real draws and cutoff labels separate in every experiment. A matched comparison of the current zero-label policy with a carefully chosen truncation strategy would help isolate its effect. More diverse training data and a fixed evaluation set are also needed before drawing conclusions from loss curves. Do not infer strength gains from these 12 self-play outcomes or four tactical checks.
+
+Follow-up: the [matched value-mask experiment](../2026-11-06-cutoff-value-mask-01/README.md) keeps cutoff policy targets but excludes their value loss, with identical initialization and training settings. It records the comparison without altering this baseline's measurements.

@@ -34,6 +34,9 @@ class RunLogger:
         self.games = []
         self.update_count = 0
         self.last_update = None
+        self.policy_samples_seen = 0
+        self.value_samples_seen = 0
+        self.cutoff_value_policy = config.get("cutoff_value_policy", "draw")
         self.checkpoints = []
         self.started_at = utc_now()
         hashes = {}
@@ -57,13 +60,16 @@ class RunLogger:
                 return None
 
         metadata = {
-            "schema_version": 1, "started_at": self.started_at, "config": config,
+            "schema_version": 2, "started_at": self.started_at, "config": config,
             "python_version": sys.version, "torch_version": str(torch_version),
             "platform": platform.system(), "git_commit": git("rev-parse", "HEAD"),
             "git_branch": git("branch", "--show-current"),
             "git_dirty": bool(git("status", "--porcelain")), "source_sha256": hashes,
             "value_perspective": "player to move",
-            "truncation_policy": "move_limit has outcome '*' but training target 0",
+            "truncation_policy": ("move_limit has outcome '*'; retained for policy, excluded from value loss"
+                                  if self.cutoff_value_policy == "exclude"
+                                  else "move_limit has outcome '*' but value training target 0 (legacy control)"),
+            "value_loss_normalization": "mean over value-eligible positions; zero contribution if none",
             "resume_policy": "weights only; optimizer and replay start fresh",
         }
         write_json(self.directory / "config.json", metadata)
@@ -84,6 +90,8 @@ class RunLogger:
         self.append("updates.jsonl", record)
         self.update_count += 1
         self.last_update = record
+        self.policy_samples_seen += record.get("policy_sample_count", record.get("batch_size", 0))
+        self.value_samples_seen += record.get("value_sample_count", record.get("batch_size", 0))
 
     def probes(self, record):
         self.append("probes.jsonl", record)
@@ -98,13 +106,18 @@ class RunLogger:
         actual_draws = sum(game["outcome"] == "1/2-1/2" for game in self.games)
         positions = sum(game["plies"] for game in self.games)
         cutoff_positions = sum(game["plies"] for game in self.games if game["truncated"])
+        excluded_positions = cutoff_positions if self.cutoff_value_policy == "exclude" else 0
         summary = {
-            "schema_version": 1, "status": status, "started_at": self.started_at,
+            "schema_version": 2, "status": status, "started_at": self.started_at,
             "updated_at": utc_now(), "games_completed": count, "termination_counts": dict(endings),
             "actual_draws": actual_draws, "decisive_games": endings["checkmate"],
             "move_limit_games": cutoffs, "move_limit_fraction": cutoffs / count if count else 0.0,
             "positions_generated": positions, "cutoff_target_positions": cutoff_positions,
             "cutoff_target_fraction": cutoff_positions / positions if positions else 0.0,
+            "cutoff_value_policy": self.cutoff_value_policy,
+            "policy_target_positions": positions, "value_target_positions": positions - excluded_positions,
+            "excluded_value_positions": excluded_positions,
+            "policy_samples_seen": self.policy_samples_seen, "value_samples_seen": self.value_samples_seen,
             "mean_plies": positions / count if count else 0.0,
             "self_play_seconds": sum(game["duration_seconds"] for game in self.games),
             "optimizer_steps": self.update_count, "last_update": self.last_update,

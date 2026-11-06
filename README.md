@@ -81,7 +81,7 @@ Play a new checkpoint with either interface:
 .venv/bin/python chess/scr/play_with_model.py --model checkpoints/smoke/policy_value_net_1.pt --you w --temp 0
 ```
 
-**Checkpoint format changed:** the network now receives 20 input planes and produces 4,480 policy logits, including separate underpromotion actions. Older 13-plane/4,096-action checkpoints are rejected with an explanation and need retraining. Training assigns zero to draws and truncated games; stronger training will need longer games, evaluation matches, and careful treatment of truncation.
+**Checkpoint format changed:** the network now receives 20 input planes and produces 4,480 policy logits, including separate underpromotion actions. Older 13-plane/4,096-action checkpoints are rejected with an explanation and need retraining. Genuine draws train value zero. Move-limit positions now train policy only; `--cutoff-value-policy draw` reproduces the earlier zero-label control.
 
 ## Inspect how training learns
 
@@ -92,6 +92,7 @@ Run a short experiment with every game traced and repeated fixed-position checks
   --iterations 12 --sims 64 --max-moves 200 --hidden 128 \
   --batch-size 64 --min-buffer 256 --updates 2 --seed 1 --device cpu \
   --run-dir runs/inspection-01 --trace-every 1 \
+  --cutoff-value-policy exclude \
   --probe-every 4 --probe-sims 80 --save-every 4 --report-every 1
 ```
 
@@ -109,14 +110,16 @@ The files are designed for direct inspection or later analysis:
 |---|---|
 | `config.json`, `source/` | Hyperparameters, seed, software versions, source hashes and a copy of the exact training source |
 | `games.jsonl` | Actual ending, outcome, final FEN, moves, length, time, and optional per-move predictions/search traces |
-| `updates.jsonl` | Every optimizer update: losses, policy KL/agreement, value predictions/targets, gradient norm, and fraction of targets originating from cutoffs |
+| `updates.jsonl` | Every optimizer update: losses, policy KL/agreement, eligible value predictions/targets, gradient norm, and separate policy/value sample counts |
 | `probes.jsonl` | The same six positions before training and at later intervals; separate network and search behavior |
 | `summary.json` | Current run status, ending counts, cutoff fractions, replay composition, and checkpoints |
 | `report.html` | Interactive view of those records |
 
-Cutoffs use chess outcome `*` (unfinished), although their existing value-training target remains zero. The report distinguishes this assumption from actual draws. Metrics are observations of the current learning setup; fixed tactical checks and lower loss do not establish an Elo rating. See [the inspection guide](docs/training-inspection.md) for how to interpret the metrics.
+Cutoffs use chess outcome `*` (unfinished). By default their positions stay in replay for policy training but are masked out of value loss. Value MSE averages only eligible positions; a batch containing only cutoffs performs a policy-only update. The report shows the active cutoff policy and the number of examples supervising each head. Historical runs without a cutoff-policy flag are displayed as the legacy draw-label control. Metrics are observations of the current learning setup; fixed tactical checks and lower loss do not establish an Elo rating. See [the inspection guide](docs/training-inspection.md) for how to interpret the metrics.
 
 The [first recorded experiment](experiments/2026-11-06-inspection-01/README.md) includes configuration, game histories, update/probe measurements, and a learning figure: 8 checkmates and 4 cutoffs, with no demonstrated value-prediction advantage over always predicting zero.
+
+The [matched cutoff-value comparison](experiments/2026-11-06-cutoff-value-mask-01/README.md) reruns that setup while excluding unfinished positions from value loss. All 800 cutoff positions remain available for policy training. Both models solve 2/4 tactical checks and neither beats always-zero value predictions on the six common labeled examples; the small run does not establish a learning benefit. The reusable `scr.compare_training` command checks matching initialization/configuration and compares saved models on identical inputs.
 
 ## Tests
 

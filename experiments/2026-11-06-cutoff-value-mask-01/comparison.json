@@ -1,0 +1,242 @@
+{
+  "schema_version": 1,
+  "complete": true,
+  "valid_comparison": true,
+  "checks": {
+    "runs_complete": true,
+    "hyperparameters_equal": true,
+    "cutoff_policy_intervention": true,
+    "initial_weights_exact": true,
+    "initial_probe_equal_excluding_timing": true,
+    "games_before_first_update_moves_equal": true,
+    "first_policy_loss_close": true,
+    "checkpoints_available": true
+  },
+  "hyperparameter_differences": {},
+  "pre_update_games_compared": 2,
+  "baseline": {
+    "directory": "runs/2026-11-06-inspection-01",
+    "status": "completed",
+    "complete": true,
+    "cutoff_value_policy": "draw",
+    "games": 12,
+    "actually_ended_games": 8,
+    "cutoff_games": 4,
+    "actual_draws": 0,
+    "termination_counts": {
+      "checkmate": 8,
+      "move_limit": 4
+    },
+    "positions": 1874,
+    "cutoff_positions": 800,
+    "optimizer_steps": 22,
+    "policy_samples": 1408,
+    "value_samples": 1408,
+    "cutoff_policy_samples": 640,
+    "excluded_value_samples": 0,
+    "cutoff_value_samples": 640,
+    "policy_kl_first": 5.161643981933594,
+    "policy_kl_last": 3.4019415378570557,
+    "policy_loss_first": 8.404275894165039,
+    "policy_loss_last": 6.609713554382324,
+    "last_probe": {
+      "game": 12,
+      "tactical_passes": 2,
+      "tactical_count": 4,
+      "positions": [
+        {
+          "id": "opening",
+          "value": -0.06655192375183105,
+          "passed": null,
+          "policy_probability_expected": 0,
+          "search_probability_expected": 0
+        },
+        {
+          "id": "white_capture_queen",
+          "value": 0.09403915703296661,
+          "passed": false,
+          "policy_probability_expected": 0.0020680375892526406,
+          "search_probability_expected": 0.05
+        },
+        {
+          "id": "black_capture_queen",
+          "value": -0.04550769925117493,
+          "passed": false,
+          "policy_probability_expected": 0.004504898831540276,
+          "search_probability_expected": 0.0375
+        },
+        {
+          "id": "white_mate_in_one",
+          "value": 0.09372026473283768,
+          "passed": true,
+          "policy_probability_expected": 0.2409224753162159,
+          "search_probability_expected": 0.7125
+        },
+        {
+          "id": "black_mate_in_one",
+          "value": -0.04588025063276291,
+          "passed": true,
+          "policy_probability_expected": 0.10428017916534672,
+          "search_probability_expected": 0.7125
+        },
+        {
+          "id": "bare_kings",
+          "value": 0.094267338514328,
+          "passed": null,
+          "policy_probability_expected": 0,
+          "search_probability_expected": 0
+        }
+      ]
+    }
+  },
+  "treatment": {
+    "directory": "runs/2026-11-06-cutoff-value-mask-01",
+    "status": "completed",
+    "complete": true,
+    "cutoff_value_policy": "exclude",
+    "games": 12,
+    "actually_ended_games": 8,
+    "cutoff_games": 4,
+    "actual_draws": 0,
+    "termination_counts": {
+      "checkmate": 8,
+      "move_limit": 4
+    },
+    "positions": 1637,
+    "cutoff_positions": 800,
+    "optimizer_steps": 22,
+    "policy_samples": 1408,
+    "value_samples": 869,
+    "cutoff_policy_samples": 539,
+    "excluded_value_samples": 539,
+    "cutoff_value_samples": 0,
+    "policy_kl_first": 5.161643981933594,
+    "policy_kl_last": 3.4221487045288086,
+    "policy_loss_first": 8.404275894165039,
+    "policy_loss_last": 6.637491226196289,
+    "last_probe": {
+      "game": 12,
+      "tactical_passes": 2,
+      "tactical_count": 4,
+      "positions": [
+        {
+          "id": "opening",
+          "value": -0.01875642128288746,
+          "passed": null,
+          "policy_probability_expected": 0,
+          "search_probability_expected": 0
+        },
+        {
+          "id": "white_capture_queen",
+          "value": 0.021812263876199722,
+          "passed": false,
+          "policy_probability_expected": 0.002789345139966808,
+          "search_probability_expected": 0.0375
+        },
+        {
+          "id": "black_capture_queen",
+          "value": -0.020512232556939125,
+          "passed": false,
+          "policy_probability_expected": 0.003200842431906012,
+          "search_probability_expected": 0.0375
+        },
+        {
+          "id": "white_mate_in_one",
+          "value": 0.021821212023496628,
+          "passed": true,
+          "policy_probability_expected": 0.014870372161144096,
+          "search_probability_expected": 0.7125
+        },
+        {
+          "id": "black_mate_in_one",
+          "value": -0.01969192735850811,
+          "passed": true,
+          "policy_probability_expected": 0.03614111850893019,
+          "search_probability_expected": 0.725
+        },
+        {
+          "id": "bare_kings",
+          "value": 0.02217935584485531,
+          "passed": null,
+          "policy_probability_expected": 0,
+          "search_probability_expected": 0
+        }
+      ]
+    }
+  },
+  "checkpoints": {
+    "baseline_initial": "runs/2026-11-06-inspection-01/checkpoints/policy_value_net_0.pt",
+    "baseline_final": "runs/2026-11-06-inspection-01/checkpoints/policy_value_net_12.pt",
+    "treatment_initial": "runs/2026-11-06-cutoff-value-mask-01/checkpoints/policy_value_net_0.pt",
+    "treatment_final": "runs/2026-11-06-cutoff-value-mask-01/checkpoints/policy_value_net_12.pt"
+  },
+  "common_value_diagnostics": {
+    "value_perspective": "player to move",
+    "evaluation_only": true,
+    "positions": [
+      {
+        "id": "white_mate_in_one",
+        "fen": "7k/8/5KQ1/8/8/8/8/8 w - - 0 1",
+        "expected_value": 1.0,
+        "initial": -0.040101438760757446,
+        "baseline": 0.09372027963399887,
+        "treatment": 0.02182122692465782
+      },
+      {
+        "id": "white_mate_in_one_after_mate",
+        "fen": "7k/6Q1/5K2/8/8/8/8/8 b - - 1 1",
+        "expected_value": -1.0,
+        "initial": -0.040026307106018066,
+        "baseline": -0.04530273377895355,
+        "treatment": -0.019850831478834152
+      },
+      {
+        "id": "black_mate_in_one",
+        "fen": "8/8/8/8/8/5kq1/8/7K b - - 0 1",
+        "expected_value": 1.0,
+        "initial": -0.04055240377783775,
+        "baseline": -0.04588025435805321,
+        "treatment": -0.019691932946443558
+      },
+      {
+        "id": "black_mate_in_one_after_mate",
+        "fen": "8/8/8/8/8/5k2/6q1/7K w - - 1 2",
+        "expected_value": -1.0,
+        "initial": -0.04068683460354805,
+        "baseline": 0.09395597875118256,
+        "treatment": 0.02214140258729458
+      },
+      {
+        "id": "bare_kings_w",
+        "fen": "4k3/8/8/8/8/8/8/4K3 w - - 0 1",
+        "expected_value": 0.0,
+        "initial": -0.04015709459781647,
+        "baseline": 0.094267338514328,
+        "treatment": 0.022179363295435905
+      },
+      {
+        "id": "bare_kings_b",
+        "fen": "4k3/8/8/8/8/8/8/4K3 b - - 0 1",
+        "expected_value": 0.0,
+        "initial": -0.03999767452478409,
+        "baseline": -0.044967226684093475,
+        "treatment": -0.02000093087553978
+      }
+    ],
+    "mse": {
+      "initial": 0.6682673257475721,
+      "baseline": 0.6723838956940624,
+      "treatment": 0.6671604585065283
+    },
+    "zero_baseline_mse": 0.6666666666666666
+  },
+  "errors": [],
+  "limitations": [
+    "One small seeded run per condition cannot establish a general strength or Elo improvement.",
+    "After the first changed update, self-play trajectories and replay populations can diverge.",
+    "Logged value-loss averages use different target populations and must not be compared as an accuracy test.",
+    "The six shared synthetic value positions are a small diagnostic, include terminal states, and are never trained on.",
+    "Policy KL is measured on each run's own sampled search targets, not a shared held-out policy dataset.",
+    "Sample counts include repeated replay draws; they are not counts of unique positions."
+  ]
+}
