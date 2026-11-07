@@ -24,6 +24,23 @@ python3.12 -m venv .venv
 
 The GUI also requires Tk support in your Python installation. Left-click source and destination squares, right-click to highlight legal moves, and press `u` to undo. Promotion prompts for Q/R/B/N. The engine searches in a worker thread, keeping the board responsive. The older two-player board is still available at `chess/main.py`.
 
+To play the two trained Hikaru models on this machine, double-click **Play Chess.command** in Finder, or run:
+
+```bash
+./"Play Chess.command"
+```
+
+Choose **Hikaru supervised (epoch 3)** or **Self-play (100 games)**, choose your color, then click **New game**. The board turns to face your side. The launcher uses 64 MCTS simulations per move with no time cutoff and four CPU threads for either opponent; controls pause while the engine thinks. **Undo** takes back your move and the reply. The side panel shows candidate moves and the network's value estimate from the engine's perspective before its move. These presets use the local checkpoints from the recorded experiments; model weights are not included in Git. The supervised model was stronger in their comparison.
+
+The equivalent direct commands are:
+
+```bash
+.venv/bin/python chess/UI_with_AI.py --opponent supervised --sims 64 --seconds 0
+.venv/bin/python chess/UI_with_AI.py --opponent selfplay --sims 64 --seconds 0
+```
+
+The GUI still accepts `--model PATH` for another checkpoint. `--seconds 0` disables its time limit.
+
 ## Inspect positions
 
 ```bash

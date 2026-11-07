@@ -4,25 +4,56 @@ from __future__ import annotations
 import argparse
 import math
 import os
+from pathlib import Path
 from queue import Empty, Queue
 import random
 from threading import Thread
 
 import tkinter as tk
-from tkinter import simpledialog
+from tkinter import messagebox, simpledialog, ttk
 from PIL import Image, ImageTk
 
 from scr.mcts import mcts_search, best_move
 from scr.chess_engine import GameState
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--model", help="Optional version-2 neural checkpoint")
+opponent_args = parser.add_mutually_exclusive_group()
+opponent_args.add_argument("--model", help="Optional version-2 neural checkpoint")
+opponent_args.add_argument("--opponent", choices=("supervised", "selfplay"), help="Choose a trained opponent preset")
 parser.add_argument("--you", choices=("w", "b"), default="w")
 parser.add_argument("--sims", type=int, default=200)
-parser.add_argument("--seconds", type=float, default=2.0, help="Maximum search seconds per move")
+parser.add_argument("--seconds", type=float, default=2.0, help="Maximum search seconds per move; 0 uses only the simulation limit")
+parser.add_argument("--device", choices=("cpu", "mps", "cuda", "auto"), default="cpu")
+parser.add_argument("--threads", type=int, default=4, help="CPU threads for neural inference")
 args = parser.parse_args()
 if args.sims < 0 or not math.isfinite(args.seconds) or args.seconds < 0:
     parser.error("--sims and --seconds must be nonnegative and finite")
+if args.threads < 1:
+    parser.error("--threads must be positive")
+
+repo_root = Path(__file__).resolve().parents[1]
+opponents = {
+    "handcrafted": {"label": "Built-in MCTS", "path": None},
+    "supervised": {"label": "Hikaru supervised (epoch 3)",
+                   "path": repo_root / "runs/2026-11-06-hikaru-supervised-02/checkpoints/best.pt"},
+    "selfplay": {"label": "Self-play (100 games)",
+                 "path": repo_root / "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_100.pt"},
+}
+if args.model:
+    opponents["custom"] = {"label": "Custom checkpoint", "path": Path(args.model).expanduser().resolve()}
+current_opponent = args.opponent or ("custom" if args.model else "handcrafted")
+human_color = args.you
+
+
+def load_opponent(key):
+    path = opponents[key]["path"]
+    if path is None:
+        return None
+    import torch
+    from scr.rl_interface import load_model
+    torch.set_num_threads(args.threads)
+    return load_model(path, device=None if args.device == "auto" else args.device)
+
 
 WINDOW_NAME = "Chess — MCTS"
 SQUARE_LENGTH = 60
@@ -34,13 +65,11 @@ AI_SIMS = args.sims
 AI_TEMP = 0.0
 AI_THINKING = False
 ai_results = Queue()
-model = None
-if args.model:
-    from scr.rl_interface import load_model, policy_distribution, critic_value
-    model = load_model(args.model)
-    print(f"Loaded neural model from {args.model}")
-else:
-    print("Using MCTS with the built-in evaluation; no neural checkpoint required.")
+try:
+    model = load_opponent(current_opponent)
+except Exception as exc:
+    parser.error(f"Could not load {opponents[current_opponent]['label']}: {exc}")
+print(f"Opponent: {opponents[current_opponent]['label']}")
 
 root = tk.Tk()                  # create instance of the Tk class
 root.title(WINDOW_NAME)         # sets title of the window
@@ -55,10 +84,33 @@ print("Tk version =", root.tk.call("info", "patchlevel"))
 
 # position board and info in frame
 board_frm.grid(row = 0, column=0)
-info_frm.grid(row=0, column=1)
+info_frm.grid(row=0, column=1, sticky="n", padx=12, pady=8)
+
+# Choices describe the next game; the active opponent remains visible below.
+settings_frm = tk.Frame(info_frm)
+settings_frm.pack(fill="x", pady=(0, 8))
+tk.Label(settings_frm, text="Opponent for next game:").grid(row=0, column=0, columnspan=2, sticky="w")
+opponent_choice = tk.StringVar(value=opponents[current_opponent]["label"])
+opponent_picker = ttk.Combobox(settings_frm, textvariable=opponent_choice, state="readonly", width=34,
+                              values=[entry["label"] for entry in opponents.values()])
+opponent_picker.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 6))
+tk.Label(settings_frm, text="You play:").grid(row=2, column=0, sticky="w")
+color_choice = tk.StringVar(value="White" if human_color == "w" else "Black")
+color_picker = ttk.Combobox(settings_frm, textvariable=color_choice, state="readonly", width=12,
+                           values=("White", "Black"))
+color_picker.grid(row=2, column=1, sticky="e")
+new_game_button = tk.Button(settings_frm, text="New game", command=lambda: new_game())
+new_game_button.grid(row=3, column=0, sticky="ew", pady=8)
+undo_button = tk.Button(settings_frm, text="Undo", command=lambda: undo_move())
+undo_button.grid(row=3, column=1, sticky="ew", pady=8)
+opponent_status = tk.Label(info_frm, justify="left", anchor="w", font=("Courier", 11))
+opponent_status.pack(fill="x")
+tk.Label(info_frm, text="Choices apply when you press New game.\n\nLeft click to move; right click for legal moves.\n"
+         "u: undo | a: AI move | t: toggle AI | m: toggle MCTS",
+         justify="left", font=("Courier", 10)).pack(pady=(8, 8))
 
 # add textbox into info_frame
-text_box = tk.Label(info_frm, text = f"You play {args.you}.\n\nLeft click to move.\nRight click for legal moves.\nu: undo | a: AI move | t: toggle AI", font= ("Courier", 12))
+text_box = tk.Label(info_frm, text="White to move.", font=("Courier", 12))
 text_box.pack()
 
 # ----------------------------
@@ -66,7 +118,7 @@ text_box.pack()
 # ----------------------------
 ai_box = tk.Text(info_frm, height=18, width=44, font=("Courier", 11))
 ai_box.pack(pady=(10, 0))
-ai_box.insert("1.0", "AI info will appear here.\nPress 'a' to make AI move.\n")
+ai_box.insert("1.0", "AI analysis appears after its move.\n")
 ai_box.config(state="disabled")
 
 def set_ai_info(text: str) -> None:
@@ -75,6 +127,27 @@ def set_ai_info(text: str) -> None:
     ai_box.delete("1.0", "end")
     ai_box.insert("1.0", text)
     ai_box.config(state="disabled")
+
+
+def update_opponent_status():
+    color_name = "White" if human_color == "w" else "Black"
+    limit = f"{args.seconds:g}s cap" if args.seconds else "no time cap"
+    search_detail = (f"MCTS: up to {AI_SIMS} simulations, {limit}"
+                     if AI_USE_MCTS or model is None else "Raw neural policy (MCTS off)")
+    runtime = f"{next(model.parameters()).device}, {args.threads} CPU threads" if model is not None else "built-in evaluator"
+    opponent_status.config(text=f"Opponent: {opponents[current_opponent]['label']}\nYou: {color_name}\n"
+                           f"{search_detail}\n{runtime}\nAI: {'enabled' if AI_ENABLED else 'disabled'}")
+    root.title(f"Chess — {opponents[current_opponent]['label']} — You play {color_name}")
+
+
+def set_game_controls_enabled(enabled):
+    for picker in (opponent_picker, color_picker):
+        picker.configure(state="readonly" if enabled else "disabled")
+    for button in (new_game_button, undo_button):
+        button.configure(state="normal" if enabled else "disabled")
+
+
+update_opponent_status()
 
 # load in images using a path relative to this file's directory
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -130,6 +203,17 @@ We need to draw the board now! The functions after this depend on the canvas_gri
 """        
 
 canvas_grid = draw_board(board_frm)         # draw initial board
+
+
+def orient_board():
+    # canvas_grid stays indexed by board coordinates; only visual placement changes.
+    for row, canvases in enumerate(canvas_grid):
+        for col, canvas in enumerate(canvases):
+            canvas.grid(row=row if human_color == "w" else 7 - row,
+                        column=col if human_color == "w" else 7 - col)
+
+
+orient_board()
 
 def draw_pieces(board):
     """This function draws the pieces on the board on the same frame of a background canvas_grid
@@ -320,9 +404,38 @@ def on_right_click(event):
         two_click_history_R.clear()
 
 # NEW: bind 'u' and 'Backspace' to undo move
+def new_game():
+    global game, model, current_opponent, human_color, AI_PLAYS, AI_ENABLED
+    if AI_THINKING:
+        return
+    selected = next(key for key, entry in opponents.items() if entry["label"] == opponent_choice.get())
+    try:
+        selected_model = load_opponent(selected)
+    except Exception as exc:
+        messagebox.showerror("Cannot load opponent", f"{opponents[selected]['label']} could not be loaded.\n\n{exc}", parent=root)
+        return
+    for history in (two_click_history_L, two_click_history_R, two_click_history_M):
+        for square in history:
+            reset_border(square)
+        history.clear()
+    model, current_opponent = selected_model, selected
+    human_color = "w" if color_choice.get() == "White" else "b"
+    AI_PLAYS = "b" if human_color == "w" else "w"
+    AI_ENABLED = True
+    game = GameState()
+    orient_board()
+    reset_background()
+    draw_pieces(game.board)
+    update_opponent_status()
+    update_text_info(game)
+    set_ai_info("New game ready.\nThe AI plays the opposite color.\n")
+    root.after(100, ai_make_move)
+
+
 def undo_move(event=None):
     if AI_THINKING:
         return
+    previous_plies = len(game.move_log)
     for history in (two_click_history_L, two_click_history_R, two_click_history_M):
         for square in history:
             reset_border(square)
@@ -333,6 +446,8 @@ def undo_move(event=None):
     reset_background()
     draw_pieces(board=game.board)
     update_text_info(game, checkmate=game.is_checkmate(), stalemate=game.is_stalemate())
+    set_ai_info(("Position restored by Undo." if previous_plies else "No moves to undo.")
+                + "\nAI analysis cleared.\n")
     if AI_ENABLED and game.player == AI_PLAYS:
         root.after(100, ai_make_move)
 
@@ -361,19 +476,24 @@ def ai_make_move(event=None):
         return
     reset_background()
     AI_THINKING = True
+    set_game_controls_enabled(False)
     snapshot = game.fast_copy_for_search()
-    set_ai_info("MCTS is thinking…")
+    search_model, use_mcts, search_sims = model, AI_USE_MCTS, AI_SIMS
+    search_seconds = args.seconds or None
+    set_ai_info(f"{opponents[current_opponent]['label']} is thinking…")
 
     def search():
         try:
-            value = float(critic_value(model, snapshot)) if model is not None else None
-            if AI_USE_MCTS or model is None:
+            if search_model is not None:
+                from scr.rl_interface import critic_value, policy_distribution
+            value = float(critic_value(search_model, snapshot)) if search_model is not None else None
+            if use_mcts or search_model is None:
                 probabilities, search_root = mcts_search(
-                    snapshot, model, num_sims=AI_SIMS, time_limit=args.seconds,
+                    snapshot, search_model, num_sims=search_sims, time_limit=search_seconds,
                     show_progress=False, return_root=True,
                 )
             else:
-                probabilities = policy_distribution(model, snapshot)
+                probabilities = policy_distribution(search_model, snapshot)
                 search_root = None
             ai_results.put((probabilities, value, search_root, None))
         except Exception as exc:
@@ -391,6 +511,7 @@ def finish_ai_move():
         root.after(30, finish_ai_move)
         return
     AI_THINKING = False
+    set_game_controls_enabled(True)
     if error:
         set_ai_info(f"Search failed: {error}")
         return
@@ -401,9 +522,11 @@ def finish_ai_move():
     draw_pieces(game.board)
     update_text_info(game, checkmate=game.is_checkmate(), stalemate=game.is_stalemate(),
                      extra_text=f"AI last move: {_move_to_str(mv)}")
-    lines = [f"MCTS simulations: up to {AI_SIMS}", f"Chosen move: {_move_to_str(mv)}"]
+    search_info = (f"MCTS simulations completed: {sum(edge.n for edge in search_root.edges.values())}"
+                   if search_root is not None else "Raw neural policy (MCTS off)")
+    lines = [search_info, f"Chosen move: {_move_to_str(mv)}"]
     if value is not None:
-        lines.append(f"Neural value before move: {value:+.3f}")
+        lines.append(f"Neural value (AI perspective): {value:+.3f}")
     lines += ["", "Top candidate moves:"]
     top = sorted(pi_moves.items(), key=lambda item: item[1], reverse=True)[:10]
     lines += [f"{probability:7.4f}  {_move_to_str(move)}" for move, probability in top]
@@ -412,14 +535,20 @@ def finish_ai_move():
 
 def toggle_ai(event=None):
     global AI_ENABLED
+    if AI_THINKING:
+        return
     AI_ENABLED = not AI_ENABLED
+    update_opponent_status()
     print("AI_ENABLED =", AI_ENABLED)
     if AI_ENABLED:
         root.after(100, ai_make_move)
 
 def toggle_mcts(event=None):
     global AI_USE_MCTS
+    if AI_THINKING:
+        return
     AI_USE_MCTS = not AI_USE_MCTS
+    update_opponent_status()
     print("AI_USE_MCTS =", AI_USE_MCTS)
 
 root.bind("<a>", ai_make_move)   # press 'a' to make the AI play one move now
