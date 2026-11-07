@@ -1,0 +1,16 @@
+{
+  "selected_at": "2026-11-06T23:33:50.955117+00:00",
+  "criterion": "Final checkpoint after 100 games; no test/benchmark-based checkpoint selection or hyperparameter tuning.",
+  "training_games": 100,
+  "optimizer_steps": 800,
+  "baseline_checkpoint": "runs/2026-11-06-hikaru-supervised-02/checkpoints/best.pt",
+  "baseline_sha256": "b6360d2b1de42fc704813248946830394bd3eccafa0ab251fd997f627abef12a",
+  "candidate_checkpoint": "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_100.pt",
+  "candidate_sha256": "8426eb6aa18c9c58be09bf34eb8e8971af590e9cfdd6f3a257e60ea34efeffae",
+  "changed_parameter_tensors": 16,
+  "benchmark_manifest_sha256": "a08c9d2d72639a8d07ce6cc6718d506a3fecee6ad7be0b8e31ecfc4c642ef095",
+  "benchmark_games_sha256": "528f95181f27e4b938db02cb0de1a6dc91a9eb3ac19cf309240db6f5b2bf281c",
+  "training_summary_sha256": "8a6d7cbc3a6177d31a5715ca9f3800ad61de4313e759222cca85d4fa86bf5d12",
+  "protocol_sha256": "b376583441d8f17ea488a970651e2a7a7c0e69fb13dcf5940bc45eb7c4bd68a2",
+  "evaluation_used_for_selection": false
+}

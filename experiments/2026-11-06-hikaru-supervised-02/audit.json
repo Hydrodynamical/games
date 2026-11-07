@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "audited_at": "2026-11-06T21:15:01.037023+00:00",
+  "status": "passed",
+  "method": "Independent file hashes, protocol/metric/count checks, torch.equal tensor comparisons, and python-chess full-history replay; no model retraining or new test sampling.",
+  "training": {
+    "protocol_precedes_training": true,
+    "selection_precedes_test_evaluation": true,
+    "dataset_games": 5000,
+    "dataset_shards_verified": 56,
+    "dataset_manifest_sha256": "cd796ee9ce0a541d07565c0bcccd27c2c91ef01aea88d26231ba0dbe7636829e",
+    "source_snapshot_files_verified": 18,
+    "resumed_initial_equals_prior_epoch_1_and_evaluated_best": true,
+    "fixed_model_train_positions_per_epoch": 352305,
+    "fixed_model_train_policy_positions_per_epoch": 176913,
+    "fixed_model_validation_positions_per_epoch": 43968,
+    "fixed_model_validation_policy_positions_per_epoch": 22076,
+    "completed_epoch": 6,
+    "additional_epochs": 5,
+    "additional_optimizer_steps": 13840,
+    "batches_without_policy_examples": 1,
+    "total_optimizer_steps": 16608,
+    "best_epoch": 3,
+    "best_validation_policy_nll": 3.617194704310491,
+    "best_tensors_equal_epoch_3": true,
+    "final_tensors_equal_epoch_6_and_differ_from_best": true,
+    "stop_reason": "patience_exhausted_after_epochs_4_5_6",
+    "checkpoint_evidence": [
+      {
+        "epoch": 2,
+        "sha256": "51c7b05062e7295d72a08f751691c07d4d7f4f70108524882de1ea97c7beacdc",
+        "trunk_and_value_adam_step": 5536,
+        "policy_head_adam_step": 5536
+      },
+      {
+        "epoch": 3,
+        "sha256": "c74210b08081895a05fe9f105c5f47c4ef92e830b644ff381ff6e5043bc451fd",
+        "trunk_and_value_adam_step": 8304,
+        "policy_head_adam_step": 8303
+      },
+      {
+        "epoch": 4,
+        "sha256": "548e29d72a75dea25aafe3090c85d711c3d7bb3475d3d92662901f6764240c4f",
+        "trunk_and_value_adam_step": 11072,
+        "policy_head_adam_step": 11071
+      },
+      {
+        "epoch": 5,
+        "sha256": "c432e1acd131e334e72dabffa8877db954b26b261ad9af6e7c6a3d8721ffd72f",
+        "trunk_and_value_adam_step": 13840,
+        "policy_head_adam_step": 13839
+      },
+      {
+        "epoch": 6,
+        "sha256": "04eb3add97ae2f7476c29ffe30b4afd3649bdc5e17b16a6b88ea8818a1ab25bb",
+        "trunk_and_value_adam_step": 16608,
+        "policy_head_adam_step": 16607
+      }
+    ],
+    "history": [
+      {
+        "epoch": 1,
+        "training_policy_nll": 4.089333507044943,
+        "validation_policy_nll": 4.431276849828611,
+        "training_value_mse": 0.8872892013714239,
+        "validation_value_mse": 0.8702287933581782
+      },
+      {
+        "epoch": 2,
+        "training_policy_nll": 2.8002963486651864,
+        "validation_policy_nll": 3.71070226851441,
+        "training_value_mse": 0.8709024300435635,
+        "validation_value_mse": 0.9950636455238819
+      },
+      {
+        "epoch": 3,
+        "training_policy_nll": 2.221419610981108,
+        "validation_policy_nll": 3.617194704310491,
+        "training_value_mse": 0.7381303599700741,
+        "validation_value_mse": 0.8731366439005347
+      },
+      {
+        "epoch": 4,
+        "training_policy_nll": 1.854007570371189,
+        "validation_policy_nll": 3.7869747878632958,
+        "training_value_mse": 0.6638909205419802,
+        "validation_value_mse": 0.8668352395480463
+      },
+      {
+        "epoch": 5,
+        "training_policy_nll": 1.5099332838873052,
+        "validation_policy_nll": 4.292671790436615,
+        "training_value_mse": 0.6127568724283211,
+        "validation_value_mse": 0.8207293946290554
+      },
+      {
+        "epoch": 6,
+        "training_policy_nll": 1.3242948003860842,
+        "validation_policy_nll": 4.557435254986724,
+        "training_value_mse": 0.5332992874691003,
+        "validation_value_mse": 0.9050801728338307
+      }
+    ]
+  },
+  "evaluation": {
+    "checkpoint_sha256": "b6360d2b1de42fc704813248946830394bd3eccafa0ab251fd997f627abef12a",
+    "selected_checkpoint_evaluated_after_selection": true,
+    "frozen_sample_positions": 256,
+    "sampled_games": 199,
+    "same_baseline_position_identities": true,
+    "independent_python_chess_reservoir_matches": true,
+    "test_game_plies_replayed_legally": 44899,
+    "eligible_target_positions": 22547,
+    "oracle_legal_top_moves_and_metadata_verified": true,
+    "heldout_aggregates_recomputed": true,
+    "match_histories_replayed_and_endings_verified": 12,
+    "same_baseline_match_openings_and_colors": true,
+    "matches": {
+      "mcts_wins": 6,
+      "policy_wins": 0,
+      "actual_draws": 3,
+      "unresolved_cutoffs": 3
+    },
+    "termination_counts": {
+      "move_limit": 3,
+      "checkmate": 6,
+      "threefold_repetition": 3
+    },
+    "summary_sha256": "c0b679a802fc0ea8116a739e13673c9082c811bda3ff64a5167fdce10ea762ca",
+    "positions_sha256": "b54e1b17742eaaa9b78f778ed42aed5839fdb05845cb3ce32aa03d9fb84ff965",
+    "matches_sha256": "6b9d4c75044a51e1d62f3d21bb0baa79a99c1b8f884180d2fabee0ffc1cb7181"
+  },
+  "limitations": [
+    "The frozen test sample was already viewed during the prior experiment; it is a reused diagnostic, not a new untouched benchmark.",
+    "Selection uses policy validation NLL; the best value-MSE epoch may differ.",
+    "MCTS uses more computation per move; 12 matches do not establish Elo or general playing strength.",
+    "Training example counts and stored metrics were audited; full-network training/validation inference was not independently repeated."
+  ]
+}

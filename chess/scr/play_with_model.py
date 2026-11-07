@@ -1,17 +1,18 @@
 # play_with_model.py
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Tuple
 import argparse
 import torch
 
-# Your project modules
-from mcts import mcts_search
-from rl_interface import policy_distribution, critic_value, PolicyValueNet
-
-# If your GameState lives elsewhere, update this import accordingly:
-from chess_engine import GameState
+try:
+    from .mcts import mcts_search
+    from .rl_interface import policy_distribution, critic_value, load_model, select_device, pick_move_from_dist
+    from .chess_engine import GameState
+except ImportError:
+    from mcts import mcts_search
+    from rl_interface import policy_distribution, critic_value, load_model, select_device, pick_move_from_dist
+    from chess_engine import GameState
 
 
 def move_to_str(mv: Any) -> str:
@@ -19,6 +20,8 @@ def move_to_str(mv: Any) -> str:
     Best-effort pretty printer for your Move objects.
     Falls back to repr(mv) if attributes aren't present.
     """
+    if hasattr(mv, "uci"):
+        return mv.uci()
     # common pattern: mv.start, mv.end are tuples like (r,c)
     if hasattr(mv, "start") and hasattr(mv, "end"):
         s = getattr(mv, "start")
@@ -60,31 +63,6 @@ def top_k(d: Dict[Any, float], k: int = 10) -> List[Tuple[Any, float]]:
     return sorted(d.items(), key=lambda kv: kv[1], reverse=True)[:k]
 
 
-def pick_move_from_dist(dist: Dict[Any, float], temperature: float) -> Any:
-    """
-    Sample a move from a dict {move: prob}.
-    Implements a real temperature transform:
-      - T=0 => argmax
-      - else => p_i^(1/T) renormalized
-    """
-    moves = list(dist.keys())
-    probs = torch.tensor([float(dist[m]) for m in moves], dtype=torch.float32)
-
-    if len(moves) == 0:
-        return None
-
-    if temperature == 0.0:
-        return moves[int(torch.argmax(probs).item())]
-
-    # avoid zeros / NaNs
-    probs = torch.clamp(probs, min=1e-12)
-    probs = probs ** (1.0 / float(temperature))
-    probs = probs / probs.sum()
-
-    idx = int(torch.multinomial(probs, 1).item())
-    return moves[idx]
-
-
 def inspect_position(gs: GameState, model: torch.nn.Module, k: int = 10) -> None:
     """
     Print value + top-k policy priors for current position.
@@ -118,17 +96,8 @@ def interactive_game(
     temperature: float,
     show_priors_each_turn: bool,
 ) -> None:
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    # Load model
-    state_dict = torch.load(model_path, map_location=device)
-    model = PolicyValueNet()
-    model.load_state_dict(state_dict)
-    model.to(device)
-    model.eval()
-
-    # model = torch.load(model_path, map_location=device)
-    # model.eval()
+    device = select_device()
+    model = load_model(model_path, device)
 
     gs = GameState()  # assumes default constructor creates initial chess position
 
@@ -154,6 +123,10 @@ def interactive_game(
             return
         if hasattr(gs, "is_stalemate") and gs.is_stalemate():
             print("\nSTALEMATE. Draw.")
+            return
+
+        if gs.is_draw():
+            print(f"\nDRAW: {gs.draw_reason()}")
             return
 
         # Generate legal moves
@@ -218,13 +191,16 @@ def interactive_game(
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", type=str, default="policy_value_net.pt")
+    ap.add_argument("--model", type=str, required=True, help="Version-2 checkpoint from the training runner")
     ap.add_argument("--you", type=str, choices=["w", "b"], default="w")
     ap.add_argument("--no-mcts", action="store_true", help="Use raw policy priors instead of MCTS")
     ap.add_argument("--sims", type=int, default=200, help="MCTS simulations per move (if using MCTS)")
     ap.add_argument("--temp", type=float, default=1.0, help="Sampling temperature (0 = greedy)")
     ap.add_argument("--show-priors", action="store_true", help="Print value + top priors each turn")
     args = ap.parse_args()
+    import math
+    if args.sims < 0 or not math.isfinite(args.temp) or args.temp < 0:
+        ap.error("--sims and --temp must be nonnegative (and temperature finite)")
 
     interactive_game(
         model_path=args.model,

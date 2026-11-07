@@ -1,0 +1,2 @@
+# Independent move-generation oracle for regression tests.
+python-chess==1.999

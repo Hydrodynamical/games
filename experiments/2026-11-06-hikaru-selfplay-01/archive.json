@@ -1,0 +1,28 @@
+{
+  "source_run": "runs/2026-11-06-hikaru-selfplay-01",
+  "source_benchmark": "runs/2026-11-06-hikaru-value-benchmark-01",
+  "normalization": "Absolute workspace paths in JSON keys and values are made repository-relative. JSONL traces are copied unchanged. Source hashes below refer to original local files.",
+  "source_sha256": {
+    "config.json": "8e9d8a26e93e891767aaf5d1941b36e2e0f2294c2321c803ed525eadf21f44c0",
+    "summary.json": "8a6d7cbc3a6177d31a5715ca9f3800ad61de4313e759222cca85d4fa86bf5d12",
+    "games.jsonl": "f622a4c5052a87d4a33fa0ca7ba0f1358cf16a9b4c6e0155e7e572bec8b79b8b",
+    "updates.jsonl": "0beee50b37253b42b7bf1f2e9c47d072ab9e0d27c547143347b5ea97fbd03f78",
+    "probes.jsonl": "4fb955e0144ecd9c6aa48e756a9be92e868379cf392f861155bab8bab11c7afe",
+    "value_curve.json": "ef376a8fd4e52e0955ba679395c2ca05517a0b92fe08c3085a3515effccd869c",
+    "human_retention.json": "27b1536254f6a244961b5a4f2f1516c9a6f76c2beba81f88c9459232e7e004a8",
+    "diagnostics_config.json": "93c96f32fee054232e224008459f590c2abb5e669e4623180588cab5dbfd629a",
+    "candidate_selection.json": "333d5769e20d551970c7eae4384ae20281c49a3809148561de818c2329f411ca",
+    "audit.json": "8ee7fc3659b62b739037a9bc61eb1190ab84d202e57e63a0bef6dad319415028",
+    "comparison/config.json": "f43ee220dfd3b99d29a1d3a57901041bb721a245dc6ca61df3f80c32668bf578",
+    "comparison/summary.json": "58179645d39f933d6582d00a2bed96aeb48977557441b222edd720f8023b8d19",
+    "comparison/openings.json": "74a0ffed26f97cc3b75083e845b0f8eb3fd6f63ac256660a1a14dde709dfee64",
+    "comparison/benchmark_manifest.json": "a08c9d2d72639a8d07ce6cc6718d506a3fecee6ad7be0b8e31ecfc4c642ef095",
+    "comparison/value_positions.jsonl": "0334735605bf450e0b9e91a4deed177b58d1eb7ba237ad35551b8af86807fb97",
+    "comparison/value_games.jsonl": "e4e36b701f7cc5f2f6be2c30f0882b5e3ebd43e800b36bdb208a8b6fa05972ce",
+    "comparison/matches.jsonl": "9ea88b863920995628c3e6ef6672f76ca0d8ce67f098b814a63774e4bf5b0fb3",
+    "benchmark/manifest.json": "a08c9d2d72639a8d07ce6cc6718d506a3fecee6ad7be0b8e31ecfc4c642ef095",
+    "benchmark/games.jsonl": "528f95181f27e4b938db02cb0de1a6dc91a9eb3ac19cf309240db6f5b2bf281c",
+    "benchmark/audit.json": "14439ad88e18bdb7ad52f52299020320e318d0767da7d7ff448b3ac3a4a73e41",
+    "initialization_audit.json": "d5b69cd6408c8c1fe164832db0026097f39ca2e4d77028e5174648800d99ee8d"
+  }
+}

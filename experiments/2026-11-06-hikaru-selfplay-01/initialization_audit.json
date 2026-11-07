@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "audited_at": "2026-11-06T23:09:54.821385+00:00",
+  "benchmark_completed_and_frozen_before_training": true,
+  "initial_tensors_equal_frozen_supervised_baseline": true,
+  "verified_tensors": 16,
+  "verified_elements": 10030913,
+  "baseline_sha256": "b6360d2b1de42fc704813248946830394bd3eccafa0ab251fd997f627abef12a",
+  "initial_checkpoint_sha256": "14c8ffbd0aa7af53396eac71e715f4f5dd961d27496a3327f6f46f982d60c17d",
+  "training_config_matches_protocol": true,
+  "value_loss_weight_verified_from_captured_source": 1.0,
+  "source_snapshot_hashes_verified": 27,
+  "first_game_replay_contains_only_first_training_game": true,
+  "first_game_positions": 286,
+  "benchmark_manifest_sha256": "a08c9d2d72639a8d07ce6cc6718d506a3fecee6ad7be0b8e31ecfc4c642ef095",
+  "benchmark_games_sha256": "528f95181f27e4b938db02cb0de1a6dc91a9eb3ac19cf309240db6f5b2bf281c"
+}

@@ -1,0 +1,132 @@
+{
+  "schema_version": 2,
+  "status": "completed",
+  "started_at": "2026-11-06T23:09:07.172833+00:00",
+  "updated_at": "2026-11-06T23:33:16.337524+00:00",
+  "games_completed": 100,
+  "termination_counts": {
+    "insufficient_material": 21,
+    "checkmate": 67,
+    "threefold_repetition": 5,
+    "move_limit": 4,
+    "fifty_move_rule": 2,
+    "stalemate": 1
+  },
+  "actual_draws": 29,
+  "decisive_games": 67,
+  "move_limit_games": 4,
+  "move_limit_fraction": 0.04,
+  "positions_generated": 19465,
+  "cutoff_target_positions": 1600,
+  "cutoff_target_fraction": 0.08219881839198562,
+  "cutoff_value_policy": "draw",
+  "policy_target_positions": 19465,
+  "value_target_positions": 19465,
+  "excluded_value_positions": 0,
+  "policy_samples_seen": 51200,
+  "value_samples_seen": 51200,
+  "mean_plies": 194.65,
+  "self_play_seconds": 1170.4511955867056,
+  "optimizer_steps": 800,
+  "last_update": {
+    "loss": 4.196438312530518,
+    "policy_loss": 3.9503464698791504,
+    "value_loss": 0.24609172344207764,
+    "policy_target_entropy": 2.7840776443481445,
+    "policy_kl": 1.1662688255310059,
+    "policy_top1_agreement": 0.515625,
+    "policy_sample_count": 64,
+    "value_sample_count": 64,
+    "value_sample_fraction": 1.0,
+    "value_metrics_available": true,
+    "predicted_value_mean": -0.06440815329551697,
+    "predicted_value_std": 0.34550175070762634,
+    "target_value_mean": -0.0625,
+    "target_value_std": 0.6584783792495728,
+    "value_mae": 0.3775154948234558,
+    "zero_value_baseline_mse": 0.4375,
+    "learning_rate": 0.0001,
+    "gradient_norm": 1.455897745753232,
+    "game": 100,
+    "step": 800,
+    "batch_size": 64,
+    "buffer_size": 19465,
+    "duration_seconds": 0.05111412494443357,
+    "cutoff_target_fraction": 0.0625,
+    "excluded_value_fraction": 0.0,
+    "cutoff_value_target_fraction": 0.0625,
+    "value_target_win_fraction": 0.1875,
+    "value_target_loss_fraction": 0.25,
+    "value_target_draw_fraction": 0.5625,
+    "target_win_fraction": 0.1875,
+    "target_loss_fraction": 0.25,
+    "actual_draw_target_fraction": 0.5
+  },
+  "checkpoints": [
+    {
+      "path": "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_0.pt",
+      "game": 0,
+      "step": 0
+    },
+    {
+      "path": "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_10.pt",
+      "game": 10,
+      "step": 80
+    },
+    {
+      "path": "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_20.pt",
+      "game": 20,
+      "step": 160
+    },
+    {
+      "path": "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_30.pt",
+      "game": 30,
+      "step": 240
+    },
+    {
+      "path": "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_40.pt",
+      "game": 40,
+      "step": 320
+    },
+    {
+      "path": "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_50.pt",
+      "game": 50,
+      "step": 400
+    },
+    {
+      "path": "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_60.pt",
+      "game": 60,
+      "step": 480
+    },
+    {
+      "path": "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_70.pt",
+      "game": 70,
+      "step": 560
+    },
+    {
+      "path": "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_80.pt",
+      "game": 80,
+      "step": 640
+    },
+    {
+      "path": "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_90.pt",
+      "game": 90,
+      "step": 720
+    },
+    {
+      "path": "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_100.pt",
+      "game": 100,
+      "step": 800
+    }
+  ],
+  "replay": {
+    "positions": 19465,
+    "cutoff_positions": 1600,
+    "draw_positions": 8566,
+    "decisive_positions": 9299,
+    "policy_target_positions": 19465,
+    "value_target_positions": 19465,
+    "excluded_value_positions": 0
+  },
+  "error": null
+}

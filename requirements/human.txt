@@ -1,0 +1,3 @@
+# Human-game download, PGN validation, and supervised training.
+-r neural.txt
+python-chess==1.999

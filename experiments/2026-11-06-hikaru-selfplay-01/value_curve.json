@@ -1,0 +1,1934 @@
+[
+  {
+    "game": 0,
+    "checkpoint": "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_0.pt",
+    "checkpoint_sha256": "14c8ffbd0aa7af53396eac71e715f4f5dd961d27496a3327f6f46f982d60c17d",
+    "metrics": {
+      "games": 20,
+      "completed_games": 20,
+      "excluded_unknown_outcome_games": 0,
+      "excluded_unknown_outcome_positions": 0,
+      "termination_counts": {
+        "insufficient_material": 4,
+        "checkmate": 15,
+        "threefold_repetition": 1
+      },
+      "result_counts": {
+        "1/2-1/2": 5,
+        "1-0": 11,
+        "0-1": 4
+      },
+      "value_perspective": "player to move",
+      "aggregation": "sample-weighted over every pre-move position of completed games",
+      "target_interpretation": "Observed outcomes under the frozen baseline stochastic benchmark policy; not perfect-play labels",
+      "all": {
+        "positions": 3150,
+        "games": 20,
+        "baseline": {
+          "mse": 0.9088569443085163,
+          "mae": 0.7652421966563016,
+          "mean_prediction": 0.015304852500908994,
+          "mean_absolute_prediction": 0.4848881387267639
+        },
+        "candidate": {
+          "mse": 0.9088569443085163,
+          "mae": 0.7652421966563016,
+          "mean_prediction": 0.015304852500908994,
+          "mean_absolute_prediction": 0.4848881387267639
+        },
+        "zero": {
+          "mse": 0.5888888888888889,
+          "mae": 0.5888888888888889,
+          "mean_prediction": 0.0,
+          "mean_absolute_prediction": 0.0
+        },
+        "candidate_minus_baseline_mse": 0.0,
+        "candidate_minus_baseline_mae": 0.0
+      },
+      "by_phase": {
+        "opening": {
+          "positions": 400,
+          "games": 20,
+          "baseline": {
+            "mse": 1.1678126693728281,
+            "mae": 0.9439946950081503,
+            "mean_prediction": 0.008352941671037116,
+            "mean_absolute_prediction": 0.4145025900384644
+          },
+          "candidate": {
+            "mse": 1.1678126693728281,
+            "mae": 0.9439946950081503,
+            "mean_prediction": 0.008352941671037116,
+            "mean_absolute_prediction": 0.4145025900384644
+          },
+          "zero": {
+            "mse": 0.75,
+            "mae": 0.75,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": 0.0,
+          "candidate_minus_baseline_mae": 0.0
+        },
+        "later": {
+          "positions": 2750,
+          "games": 20,
+          "baseline": {
+            "mse": 0.8711906570264346,
+            "mae": 0.7392418332596691,
+            "mean_prediction": 0.01631603953070854,
+            "mean_absolute_prediction": 0.49512603671778926
+          },
+          "candidate": {
+            "mse": 0.8711906570264346,
+            "mae": 0.7392418332596691,
+            "mean_prediction": 0.01631603953070854,
+            "mean_absolute_prediction": 0.49512603671778926
+          },
+          "zero": {
+            "mse": 0.5654545454545454,
+            "mae": 0.5654545454545454,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": 0.0,
+          "candidate_minus_baseline_mae": 0.0
+        }
+      },
+      "by_target_outcome": {
+        "win": {
+          "positions": 933,
+          "games": 15,
+          "baseline": {
+            "mse": 1.3422640682058506,
+            "mae": 0.9802026145869172,
+            "mean_prediction": 0.019797385413082874,
+            "mean_absolute_prediction": 0.5407116426887901
+          },
+          "candidate": {
+            "mse": 1.3422640682058506,
+            "mae": 0.9802026145869172,
+            "mean_prediction": 0.019797385413082874,
+            "mean_absolute_prediction": 0.5407116426887901
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": 0.0,
+          "candidate_minus_baseline_mae": 0.0
+        },
+        "draw": {
+          "positions": 1295,
+          "games": 5,
+          "baseline": {
+            "mse": 0.2581959720188046,
+            "mae": 0.42908708021353975,
+            "mean_prediction": 0.008821014367748757,
+            "mean_absolute_prediction": 0.42908708021353975
+          },
+          "candidate": {
+            "mse": 0.2581959720188046,
+            "mae": 0.42908708021353975,
+            "mean_prediction": 0.008821014367748757,
+            "mean_absolute_prediction": 0.42908708021353975
+          },
+          "zero": {
+            "mse": 0.0,
+            "mae": 0.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": 0.0,
+          "candidate_minus_baseline_mae": 0.0
+        },
+        "loss": {
+          "positions": 922,
+          "games": 15,
+          "baseline": {
+            "mse": 1.384168346172902,
+            "mae": 1.0198656303483973,
+            "mean_prediction": 0.019865630348397362,
+            "mean_absolute_prediction": 0.5067743009589274
+          },
+          "candidate": {
+            "mse": 1.384168346172902,
+            "mae": 1.0198656303483973,
+            "mean_prediction": 0.019865630348397362,
+            "mean_absolute_prediction": 0.5067743009589274
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": 0.0,
+          "candidate_minus_baseline_mae": 0.0
+        }
+      },
+      "by_game_result": {
+        "1-0": {
+          "positions": 1337,
+          "games": 11,
+          "baseline": {
+            "mse": 1.3575599139995977,
+            "mae": 0.9948404588039234,
+            "mean_prediction": -0.002479374131528074,
+            "mean_absolute_prediction": 0.526411990402397
+          },
+          "candidate": {
+            "mse": 1.3575599139995977,
+            "mae": 0.9948404588039234,
+            "mean_prediction": -0.002479374131528074,
+            "mean_absolute_prediction": 0.526411990402397
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": 0.0,
+          "candidate_minus_baseline_mae": 0.0
+        },
+        "0-1": {
+          "positions": 518,
+          "games": 4,
+          "baseline": {
+            "mse": 1.3773706289382475,
+            "mae": 1.0130182570848851,
+            "mean_prediction": 0.0774169787364512,
+            "mean_absolute_prediction": 0.5172143570362306
+          },
+          "candidate": {
+            "mse": 1.3773706289382475,
+            "mae": 1.0130182570848851,
+            "mean_prediction": 0.0774169787364512,
+            "mean_absolute_prediction": 0.5172143570362306
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": 0.0,
+          "candidate_minus_baseline_mae": 0.0
+        },
+        "1/2-1/2": {
+          "positions": 1295,
+          "games": 5,
+          "baseline": {
+            "mse": 0.2581959720188046,
+            "mae": 0.42908708021353975,
+            "mean_prediction": 0.008821014367748757,
+            "mean_absolute_prediction": 0.42908708021353975
+          },
+          "candidate": {
+            "mse": 0.2581959720188046,
+            "mae": 0.42908708021353975,
+            "mean_prediction": 0.008821014367748757,
+            "mean_absolute_prediction": 0.42908708021353975
+          },
+          "zero": {
+            "mse": 0.0,
+            "mae": 0.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": 0.0,
+          "candidate_minus_baseline_mae": 0.0
+        }
+      },
+      "by_game_outcome": {
+        "decisive": {
+          "positions": 1855,
+          "games": 15,
+          "baseline": {
+            "mse": 1.363091962699447,
+            "mae": 0.9999165232295504,
+            "mean_prediction": 0.01983130553726614,
+            "mean_absolute_prediction": 0.5238435946699581
+          },
+          "candidate": {
+            "mse": 1.363091962699447,
+            "mae": 0.9999165232295504,
+            "mean_prediction": 0.01983130553726614,
+            "mean_absolute_prediction": 0.5238435946699581
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": 0.0,
+          "candidate_minus_baseline_mae": 0.0
+        },
+        "draw": {
+          "positions": 1295,
+          "games": 5,
+          "baseline": {
+            "mse": 0.2581959720188046,
+            "mae": 0.42908708021353975,
+            "mean_prediction": 0.008821014367748757,
+            "mean_absolute_prediction": 0.42908708021353975
+          },
+          "candidate": {
+            "mse": 0.2581959720188046,
+            "mae": 0.42908708021353975,
+            "mean_prediction": 0.008821014367748757,
+            "mean_absolute_prediction": 0.42908708021353975
+          },
+          "zero": {
+            "mse": 0.0,
+            "mae": 0.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": 0.0,
+          "candidate_minus_baseline_mae": 0.0
+        }
+      },
+      "bootstrap_game_level": {
+        "unit": "whole game, paired between models",
+        "samples": 2000,
+        "seed": 1,
+        "confidence_level": 0.95,
+        "scored_games": 20,
+        "interpretation": "descriptive percentile interval on this fixed benchmark; not a strength confidence interval",
+        "candidate_minus_baseline_mse": [
+          0.0,
+          0.0
+        ],
+        "candidate_minus_baseline_mae": [
+          0.0,
+          0.0
+        ]
+      },
+      "equal_game_mean_differences": {
+        "mse": 0.0,
+        "mae": 0.0
+      },
+      "benchmark_dir": "runs/2026-11-06-hikaru-value-benchmark-01",
+      "benchmark_sha256": {
+        "games": "528f95181f27e4b938db02cb0de1a6dc91a9eb3ac19cf309240db6f5b2bf281c",
+        "manifest": "a08c9d2d72639a8d07ce6cc6718d506a3fecee6ad7be0b8e31ecfc4c642ef095"
+      },
+      "benchmark_generator_checkpoint_sha256": "b6360d2b1de42fc704813248946830394bd3eccafa0ab251fd997f627abef12a"
+    }
+  },
+  {
+    "game": 20,
+    "checkpoint": "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_20.pt",
+    "checkpoint_sha256": "9feb10d85971e2d6e553291ffefb02e8204f8d7e10bdf03225133b14e196e24c",
+    "metrics": {
+      "games": 20,
+      "completed_games": 20,
+      "excluded_unknown_outcome_games": 0,
+      "excluded_unknown_outcome_positions": 0,
+      "termination_counts": {
+        "insufficient_material": 4,
+        "checkmate": 15,
+        "threefold_repetition": 1
+      },
+      "result_counts": {
+        "1/2-1/2": 5,
+        "1-0": 11,
+        "0-1": 4
+      },
+      "value_perspective": "player to move",
+      "aggregation": "sample-weighted over every pre-move position of completed games",
+      "target_interpretation": "Observed outcomes under the frozen baseline stochastic benchmark policy; not perfect-play labels",
+      "all": {
+        "positions": 3150,
+        "games": 20,
+        "baseline": {
+          "mse": 0.9088569443085163,
+          "mae": 0.7652421966563016,
+          "mean_prediction": 0.015304852500908994,
+          "mean_absolute_prediction": 0.4848881387267639
+        },
+        "candidate": {
+          "mse": 0.7662074352918659,
+          "mae": 0.7017835183148199,
+          "mean_prediction": -0.017385913953776398,
+          "mean_absolute_prediction": 0.28004995908695346
+        },
+        "zero": {
+          "mse": 0.5888888888888889,
+          "mae": 0.5888888888888889,
+          "mean_prediction": 0.0,
+          "mean_absolute_prediction": 0.0
+        },
+        "candidate_minus_baseline_mse": -0.1426495090166504,
+        "candidate_minus_baseline_mae": -0.06345867834148167
+      },
+      "by_phase": {
+        "opening": {
+          "positions": 400,
+          "games": 20,
+          "baseline": {
+            "mse": 1.1678126693728281,
+            "mae": 0.9439946950081503,
+            "mean_prediction": 0.008352941671037116,
+            "mean_absolute_prediction": 0.4145025900384644
+          },
+          "candidate": {
+            "mse": 0.9571770461596009,
+            "mae": 0.8637345867454133,
+            "mean_prediction": -0.021397672988096018,
+            "mean_absolute_prediction": 0.22606845602960676
+          },
+          "zero": {
+            "mse": 0.75,
+            "mae": 0.75,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.21063562321322726,
+          "candidate_minus_baseline_mae": -0.080260108262737
+        },
+        "later": {
+          "positions": 2750,
+          "games": 20,
+          "baseline": {
+            "mse": 0.8711906570264346,
+            "mae": 0.7392418332596691,
+            "mean_prediction": 0.01631603953070854,
+            "mean_absolute_prediction": 0.49512603671778926
+          },
+          "candidate": {
+            "mse": 0.738430037347468,
+            "mae": 0.6782269992703699,
+            "mean_prediction": -0.01680238536696627,
+            "mean_absolute_prediction": 0.287901814077113
+          },
+          "zero": {
+            "mse": 0.5654545454545454,
+            "mae": 0.5654545454545454,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.13276061967896657,
+          "candidate_minus_baseline_mae": -0.06101483398929919
+        }
+      },
+      "by_target_outcome": {
+        "win": {
+          "positions": 933,
+          "games": 15,
+          "baseline": {
+            "mse": 1.3422640682058506,
+            "mae": 0.9802026145869172,
+            "mean_prediction": 0.019797385413082874,
+            "mean_absolute_prediction": 0.5407116426887901
+          },
+          "candidate": {
+            "mse": 1.290534896237034,
+            "mae": 1.0552935736560305,
+            "mean_prediction": -0.05529357365603057,
+            "mean_absolute_prediction": 0.34723796376445415
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.051729171968816656,
+          "candidate_minus_baseline_mae": 0.07509095906911334
+        },
+        "draw": {
+          "positions": 1295,
+          "games": 5,
+          "baseline": {
+            "mse": 0.2581959720188046,
+            "mae": 0.42908708021353975,
+            "mean_prediction": 0.008821014367748757,
+            "mean_absolute_prediction": 0.42908708021353975
+          },
+          "candidate": {
+            "mse": 0.07301595557062929,
+            "mae": 0.21365368473357035,
+            "mean_prediction": -0.0235709509451363,
+            "mean_absolute_prediction": 0.21365368473357035
+          },
+          "zero": {
+            "mse": 0.0,
+            "mae": 0.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.18518001644817533,
+          "candidate_minus_baseline_mae": -0.2154333954799694
+        },
+        "loss": {
+          "positions": 922,
+          "games": 15,
+          "baseline": {
+            "mse": 1.384168346172902,
+            "mae": 1.0198656303483973,
+            "mean_prediction": 0.019865630348397362,
+            "mean_absolute_prediction": 0.5067743009589274
+          },
+          "candidate": {
+            "mse": 1.2092502174796744,
+            "mae": 1.0296612329074104,
+            "mean_prediction": 0.029661232907410382,
+            "mean_absolute_prediction": 0.3053176021710348
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.17491812869322754,
+          "candidate_minus_baseline_mae": 0.009795602559013128
+        }
+      },
+      "by_game_result": {
+        "1-0": {
+          "positions": 1337,
+          "games": 11,
+          "baseline": {
+            "mse": 1.3575599139995977,
+            "mae": 0.9948404588039234,
+            "mean_prediction": -0.002479374131528074,
+            "mean_absolute_prediction": 0.526411990402397
+          },
+          "candidate": {
+            "mse": 1.3232844598995406,
+            "mae": 1.0786323582495545,
+            "mean_prediction": -0.04276975234283452,
+            "mean_absolute_prediction": 0.3296712197330899
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.03427545410005717,
+          "candidate_minus_baseline_mae": 0.08379189944563115
+        },
+        "0-1": {
+          "positions": 518,
+          "games": 4,
+          "baseline": {
+            "mse": 1.3773706289382475,
+            "mae": 1.0130182570848851,
+            "mean_prediction": 0.0774169787364512,
+            "mean_absolute_prediction": 0.5172143570362306
+          },
+          "candidate": {
+            "mse": 1.061325165675148,
+            "mae": 0.9494306910850474,
+            "mean_prediction": 0.06359442355584094,
+            "mean_absolute_prediction": 0.3179641478972754
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.31604546326309957,
+          "candidate_minus_baseline_mae": -0.06358756599983773
+        },
+        "1/2-1/2": {
+          "positions": 1295,
+          "games": 5,
+          "baseline": {
+            "mse": 0.2581959720188046,
+            "mae": 0.42908708021353975,
+            "mean_prediction": 0.008821014367748757,
+            "mean_absolute_prediction": 0.42908708021353975
+          },
+          "candidate": {
+            "mse": 0.07301595557062929,
+            "mae": 0.21365368473357035,
+            "mean_prediction": -0.0235709509451363,
+            "mean_absolute_prediction": 0.21365368473357035
+          },
+          "zero": {
+            "mse": 0.0,
+            "mae": 0.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.18518001644817533,
+          "candidate_minus_baseline_mae": -0.2154333954799694
+        }
+      },
+      "by_game_outcome": {
+        "decisive": {
+          "positions": 1855,
+          "games": 15,
+          "baseline": {
+            "mse": 1.363091962699447,
+            "mae": 0.9999165232295504,
+            "mean_prediction": 0.01983130553726614,
+            "mean_absolute_prediction": 0.5238435946699581
+          },
+          "candidate": {
+            "mse": 1.250133562644427,
+            "mae": 1.0425534021356921,
+            "mean_prediction": -0.01306805794094024,
+            "mean_absolute_prediction": 0.32640207514497566
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.11295840005502011,
+          "candidate_minus_baseline_mae": 0.04263687890614176
+        },
+        "draw": {
+          "positions": 1295,
+          "games": 5,
+          "baseline": {
+            "mse": 0.2581959720188046,
+            "mae": 0.42908708021353975,
+            "mean_prediction": 0.008821014367748757,
+            "mean_absolute_prediction": 0.42908708021353975
+          },
+          "candidate": {
+            "mse": 0.07301595557062929,
+            "mae": 0.21365368473357035,
+            "mean_prediction": -0.0235709509451363,
+            "mean_absolute_prediction": 0.21365368473357035
+          },
+          "zero": {
+            "mse": 0.0,
+            "mae": 0.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.18518001644817533,
+          "candidate_minus_baseline_mae": -0.2154333954799694
+        }
+      },
+      "bootstrap_game_level": {
+        "unit": "whole game, paired between models",
+        "samples": 2000,
+        "seed": 1,
+        "confidence_level": 0.95,
+        "scored_games": 20,
+        "interpretation": "descriptive percentile interval on this fixed benchmark; not a strength confidence interval",
+        "candidate_minus_baseline_mse": [
+          -0.20794564558073456,
+          -0.06425994911338824
+        ],
+        "candidate_minus_baseline_mae": [
+          -0.1289742925281372,
+          0.02413392801756903
+        ]
+      },
+      "equal_game_mean_differences": {
+        "mse": -0.13635322050995705,
+        "mae": -0.024451276217359215
+      },
+      "benchmark_dir": "runs/2026-11-06-hikaru-value-benchmark-01",
+      "benchmark_sha256": {
+        "games": "528f95181f27e4b938db02cb0de1a6dc91a9eb3ac19cf309240db6f5b2bf281c",
+        "manifest": "a08c9d2d72639a8d07ce6cc6718d506a3fecee6ad7be0b8e31ecfc4c642ef095"
+      },
+      "benchmark_generator_checkpoint_sha256": "b6360d2b1de42fc704813248946830394bd3eccafa0ab251fd997f627abef12a"
+    }
+  },
+  {
+    "game": 40,
+    "checkpoint": "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_40.pt",
+    "checkpoint_sha256": "c8775f35124c7217279b07db75f216d2892dfa5c376308cf49b59e0d4397cdcf",
+    "metrics": {
+      "games": 20,
+      "completed_games": 20,
+      "excluded_unknown_outcome_games": 0,
+      "excluded_unknown_outcome_positions": 0,
+      "termination_counts": {
+        "insufficient_material": 4,
+        "checkmate": 15,
+        "threefold_repetition": 1
+      },
+      "result_counts": {
+        "1/2-1/2": 5,
+        "1-0": 11,
+        "0-1": 4
+      },
+      "value_perspective": "player to move",
+      "aggregation": "sample-weighted over every pre-move position of completed games",
+      "target_interpretation": "Observed outcomes under the frozen baseline stochastic benchmark policy; not perfect-play labels",
+      "all": {
+        "positions": 3150,
+        "games": 20,
+        "baseline": {
+          "mse": 0.9088569443085163,
+          "mae": 0.7652421966563016,
+          "mean_prediction": 0.015304852500908994,
+          "mean_absolute_prediction": 0.4848881387267639
+        },
+        "candidate": {
+          "mse": 0.7153643177670411,
+          "mae": 0.6748427248898236,
+          "mean_prediction": 0.007156470912427361,
+          "mean_absolute_prediction": 0.2537951428095241
+        },
+        "zero": {
+          "mse": 0.5888888888888889,
+          "mae": 0.5888888888888889,
+          "mean_prediction": 0.0,
+          "mean_absolute_prediction": 0.0
+        },
+        "candidate_minus_baseline_mse": -0.19349262654147514,
+        "candidate_minus_baseline_mae": -0.090399471766478
+      },
+      "by_phase": {
+        "opening": {
+          "positions": 400,
+          "games": 20,
+          "baseline": {
+            "mse": 1.1678126693728281,
+            "mae": 0.9439946950081503,
+            "mean_prediction": 0.008352941671037116,
+            "mean_absolute_prediction": 0.4145025900384644
+          },
+          "candidate": {
+            "mse": 0.90532732779602,
+            "mae": 0.8353560779774852,
+            "mean_prediction": 0.019639921278721887,
+            "mean_absolute_prediction": 0.21123253989309887
+          },
+          "zero": {
+            "mse": 0.75,
+            "mae": 0.75,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.26248534157680814,
+          "candidate_minus_baseline_mae": -0.10863861703066502
+        },
+        "later": {
+          "positions": 2750,
+          "games": 20,
+          "baseline": {
+            "mse": 0.8711906570264346,
+            "mae": 0.7392418332596691,
+            "mean_prediction": 0.01631603953070854,
+            "mean_absolute_prediction": 0.49512603671778926
+          },
+          "candidate": {
+            "mse": 0.6877333344900988,
+            "mae": 0.6514953280770728,
+            "mean_prediction": 0.005340696313693612,
+            "mean_absolute_prediction": 0.259986066870095
+          },
+          "zero": {
+            "mse": 0.5654545454545454,
+            "mae": 0.5654545454545454,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.18345732253633584,
+          "candidate_minus_baseline_mae": -0.0877465051825963
+        }
+      },
+      "by_target_outcome": {
+        "win": {
+          "positions": 933,
+          "games": 15,
+          "baseline": {
+            "mse": 1.3422640682058506,
+            "mae": 0.9802026145869172,
+            "mean_prediction": 0.019797385413082874,
+            "mean_absolute_prediction": 0.5407116426887901
+          },
+          "candidate": {
+            "mse": 1.1583781239288302,
+            "mae": 1.001296802892644,
+            "mean_prediction": -0.0012968028926438804,
+            "mean_absolute_prediction": 0.31923958409481157
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.18388594427702043,
+          "candidate_minus_baseline_mae": 0.021094188305726735
+        },
+        "draw": {
+          "positions": 1295,
+          "games": 5,
+          "baseline": {
+            "mse": 0.2581959720188046,
+            "mae": 0.42908708021353975,
+            "mean_prediction": 0.008821014367748757,
+            "mean_absolute_prediction": 0.42908708021353975
+          },
+          "candidate": {
+            "mse": 0.05529513497620982,
+            "mae": 0.18514064451282697,
+            "mean_prediction": -0.004660024082636043,
+            "mean_absolute_prediction": 0.18514064451282697
+          },
+          "zero": {
+            "mse": 0.0,
+            "mae": 0.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.20290083704259482,
+          "candidate_minus_baseline_mae": -0.24394643570071278
+        },
+        "loss": {
+          "positions": 922,
+          "games": 15,
+          "baseline": {
+            "mse": 1.384168346172902,
+            "mae": 1.0198656303483973,
+            "mean_prediction": 0.019865630348397362,
+            "mean_absolute_prediction": 0.5067743009589274
+          },
+          "candidate": {
+            "mse": 1.1941687760806825,
+            "mae": 1.0323075180694106,
+            "mean_prediction": 0.03230751806941063,
+            "mean_absolute_prediction": 0.28399895145925247
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.18999957009221946,
+          "candidate_minus_baseline_mae": 0.01244188772101329
+        }
+      },
+      "by_game_result": {
+        "1-0": {
+          "positions": 1337,
+          "games": 11,
+          "baseline": {
+            "mse": 1.3575599139995977,
+            "mae": 0.9948404588039234,
+            "mean_prediction": -0.002479374131528074,
+            "mean_absolute_prediction": 0.526411990402397
+          },
+          "candidate": {
+            "mse": 1.1537304040286673,
+            "mae": 1.0096303281701362,
+            "mean_prediction": -0.010691597081516907,
+            "mean_absolute_prediction": 0.2928612233786215
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.2038295099709304,
+          "candidate_minus_baseline_mae": 0.014789869366212849
+        },
+        "0-1": {
+          "positions": 518,
+          "games": 4,
+          "baseline": {
+            "mse": 1.3773706289382475,
+            "mae": 1.0130182570848851,
+            "mean_prediction": 0.0774169787364512,
+            "mean_absolute_prediction": 0.5172143570362306
+          },
+          "candidate": {
+            "mse": 1.2340788629066792,
+            "mae": 1.0349839768250217,
+            "mean_prediction": 0.08276501903310418,
+            "mean_absolute_prediction": 0.3245986670823804
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.14329176603156824,
+          "candidate_minus_baseline_mae": 0.021965719740136613
+        },
+        "1/2-1/2": {
+          "positions": 1295,
+          "games": 5,
+          "baseline": {
+            "mse": 0.2581959720188046,
+            "mae": 0.42908708021353975,
+            "mean_prediction": 0.008821014367748757,
+            "mean_absolute_prediction": 0.42908708021353975
+          },
+          "candidate": {
+            "mse": 0.05529513497620982,
+            "mae": 0.18514064451282697,
+            "mean_prediction": -0.004660024082636043,
+            "mean_absolute_prediction": 0.18514064451282697
+          },
+          "zero": {
+            "mse": 0.0,
+            "mae": 0.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.20290083704259482,
+          "candidate_minus_baseline_mae": -0.24394643570071278
+        }
+      },
+      "by_game_outcome": {
+        "decisive": {
+          "positions": 1855,
+          "games": 15,
+          "baseline": {
+            "mse": 1.363091962699447,
+            "mae": 0.9999165232295504,
+            "mean_prediction": 0.01983130553726614,
+            "mean_absolute_prediction": 0.5238435946699581
+          },
+          "candidate": {
+            "mse": 1.1761673321681876,
+            "mae": 1.0167102149643306,
+            "mean_prediction": 0.015405722135396153,
+            "mean_absolute_prediction": 0.30172375482797303
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.18692463053125952,
+          "candidate_minus_baseline_mae": 0.01679369173478018
+        },
+        "draw": {
+          "positions": 1295,
+          "games": 5,
+          "baseline": {
+            "mse": 0.2581959720188046,
+            "mae": 0.42908708021353975,
+            "mean_prediction": 0.008821014367748757,
+            "mean_absolute_prediction": 0.42908708021353975
+          },
+          "candidate": {
+            "mse": 0.05529513497620982,
+            "mae": 0.18514064451282697,
+            "mean_prediction": -0.004660024082636043,
+            "mean_absolute_prediction": 0.18514064451282697
+          },
+          "zero": {
+            "mse": 0.0,
+            "mae": 0.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.20290083704259482,
+          "candidate_minus_baseline_mae": -0.24394643570071278
+        }
+      },
+      "bootstrap_game_level": {
+        "unit": "whole game, paired between models",
+        "samples": 2000,
+        "seed": 1,
+        "confidence_level": 0.95,
+        "scored_games": 20,
+        "interpretation": "descriptive percentile interval on this fixed benchmark; not a strength confidence interval",
+        "candidate_minus_baseline_mse": [
+          -0.27099930732714567,
+          -0.11852870572713749
+        ],
+        "candidate_minus_baseline_mae": [
+          -0.1554492720030566,
+          -0.0017825783011052288
+        ]
+      },
+      "equal_game_mean_differences": {
+        "mse": -0.19673390007809055,
+        "mae": -0.051445443858219954
+      },
+      "benchmark_dir": "runs/2026-11-06-hikaru-value-benchmark-01",
+      "benchmark_sha256": {
+        "games": "528f95181f27e4b938db02cb0de1a6dc91a9eb3ac19cf309240db6f5b2bf281c",
+        "manifest": "a08c9d2d72639a8d07ce6cc6718d506a3fecee6ad7be0b8e31ecfc4c642ef095"
+      },
+      "benchmark_generator_checkpoint_sha256": "b6360d2b1de42fc704813248946830394bd3eccafa0ab251fd997f627abef12a"
+    }
+  },
+  {
+    "game": 60,
+    "checkpoint": "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_60.pt",
+    "checkpoint_sha256": "a50098ea6d606495f9d30a2f03820941db7b3a9ee84c7b53f795f9742b020fdf",
+    "metrics": {
+      "games": 20,
+      "completed_games": 20,
+      "excluded_unknown_outcome_games": 0,
+      "excluded_unknown_outcome_positions": 0,
+      "termination_counts": {
+        "insufficient_material": 4,
+        "checkmate": 15,
+        "threefold_repetition": 1
+      },
+      "result_counts": {
+        "1/2-1/2": 5,
+        "1-0": 11,
+        "0-1": 4
+      },
+      "value_perspective": "player to move",
+      "aggregation": "sample-weighted over every pre-move position of completed games",
+      "target_interpretation": "Observed outcomes under the frozen baseline stochastic benchmark policy; not perfect-play labels",
+      "all": {
+        "positions": 3150,
+        "games": 20,
+        "baseline": {
+          "mse": 0.9088569443085163,
+          "mae": 0.7652421966563016,
+          "mean_prediction": 0.015304852500908994,
+          "mean_absolute_prediction": 0.4848881387267639
+        },
+        "candidate": {
+          "mse": 0.7235145696776466,
+          "mae": 0.6809602770606141,
+          "mean_prediction": 0.007391338165237805,
+          "mean_absolute_prediction": 0.25538738126244714
+        },
+        "zero": {
+          "mse": 0.5888888888888889,
+          "mae": 0.5888888888888889,
+          "mean_prediction": 0.0,
+          "mean_absolute_prediction": 0.0
+        },
+        "candidate_minus_baseline_mse": -0.18534237463086967,
+        "candidate_minus_baseline_mae": -0.08428191959568743
+      },
+      "by_phase": {
+        "opening": {
+          "positions": 400,
+          "games": 20,
+          "baseline": {
+            "mse": 1.1678126693728281,
+            "mae": 0.9439946950081503,
+            "mean_prediction": 0.008352941671037116,
+            "mean_absolute_prediction": 0.4145025900384644
+          },
+          "candidate": {
+            "mse": 0.9141794218093588,
+            "mae": 0.8386060631211149,
+            "mean_prediction": 0.02321938365290407,
+            "mean_absolute_prediction": 0.21046768838132265
+          },
+          "zero": {
+            "mse": 0.75,
+            "mae": 0.75,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.2536332475634693,
+          "candidate_minus_baseline_mae": -0.1053886318870354
+        },
+        "later": {
+          "positions": 2750,
+          "games": 20,
+          "baseline": {
+            "mse": 0.8711906570264346,
+            "mae": 0.7392418332596691,
+            "mean_prediction": 0.01631603953070854,
+            "mean_absolute_prediction": 0.49512603671778926
+          },
+          "candidate": {
+            "mse": 0.6957815002766704,
+            "mae": 0.6580299809063594,
+            "mean_prediction": 0.0050890770033954385,
+            "mean_absolute_prediction": 0.2619211547724289
+          },
+          "zero": {
+            "mse": 0.5654545454545454,
+            "mae": 0.5654545454545454,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.1754091567497642,
+          "candidate_minus_baseline_mae": -0.08121185235330963
+        }
+      },
+      "by_target_outcome": {
+        "win": {
+          "positions": 933,
+          "games": 15,
+          "baseline": {
+            "mse": 1.3422640682058506,
+            "mae": 0.9802026145869172,
+            "mean_prediction": 0.019797385413082874,
+            "mean_absolute_prediction": 0.5407116426887901
+          },
+          "candidate": {
+            "mse": 1.167032837573967,
+            "mae": 1.0051433507144132,
+            "mean_prediction": -0.005143350714413122,
+            "mean_absolute_prediction": 0.32040073290251525
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.17523123063188373,
+          "candidate_minus_baseline_mae": 0.024940736127496033
+        },
+        "draw": {
+          "positions": 1295,
+          "games": 5,
+          "baseline": {
+            "mse": 0.2581959720188046,
+            "mae": 0.42908708021353975,
+            "mean_prediction": 0.008821014367748757,
+            "mean_absolute_prediction": 0.42908708021353975
+          },
+          "candidate": {
+            "mse": 0.05817063053925265,
+            "mae": 0.19131856677149384,
+            "mean_prediction": -0.007248742176259375,
+            "mean_absolute_prediction": 0.19131856677149384
+          },
+          "zero": {
+            "mse": 0.0,
+            "mae": 0.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.20002534147955198,
+          "candidate_minus_baseline_mae": -0.23776851344204591
+        },
+        "loss": {
+          "positions": 922,
+          "games": 15,
+          "baseline": {
+            "mse": 1.384168346172902,
+            "mae": 1.0198656303483973,
+            "mean_prediction": 0.019865630348397362,
+            "mean_absolute_prediction": 0.5067743009589274
+          },
+          "candidate": {
+            "mse": 1.2092172347936483,
+            "mae": 1.0406383758734299,
+            "mean_prediction": 0.04063837587342996,
+            "mean_absolute_prediction": 0.2795865761492161
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.17495111137925368,
+          "candidate_minus_baseline_mae": 0.02077274552503261
+        }
+      },
+      "by_game_result": {
+        "1-0": {
+          "positions": 1337,
+          "games": 11,
+          "baseline": {
+            "mse": 1.3575599139995977,
+            "mae": 0.9948404588039234,
+            "mean_prediction": -0.002479374131528074,
+            "mean_absolute_prediction": 0.526411990402397
+          },
+          "candidate": {
+            "mse": 1.1496735806882319,
+            "mae": 1.0088422363788325,
+            "mean_prediction": -0.009568328461267588,
+            "mean_absolute_prediction": 0.2885970461697371
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.20788633331136586,
+          "candidate_minus_baseline_mae": 0.014001777574909169
+        },
+        "0-1": {
+          "positions": 518,
+          "games": 4,
+          "baseline": {
+            "mse": 1.3773706289382475,
+            "mae": 1.0130182570848851,
+            "mean_prediction": 0.0774169787364512,
+            "mean_absolute_prediction": 0.5172143570362306
+          },
+          "candidate": {
+            "mse": 1.2869234566719858,
+            "mae": 1.0587746307593644,
+            "mean_prediction": 0.08776581369009602,
+            "mean_absolute_prediction": 0.329842579688582
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.09044717226626164,
+          "candidate_minus_baseline_mae": 0.04575637367447927
+        },
+        "1/2-1/2": {
+          "positions": 1295,
+          "games": 5,
+          "baseline": {
+            "mse": 0.2581959720188046,
+            "mae": 0.42908708021353975,
+            "mean_prediction": 0.008821014367748757,
+            "mean_absolute_prediction": 0.42908708021353975
+          },
+          "candidate": {
+            "mse": 0.05817063053925265,
+            "mae": 0.19131856677149384,
+            "mean_prediction": -0.007248742176259375,
+            "mean_absolute_prediction": 0.19131856677149384
+          },
+          "zero": {
+            "mse": 0.0,
+            "mae": 0.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.20002534147955198,
+          "candidate_minus_baseline_mae": -0.23776851344204591
+        }
+      },
+      "by_game_outcome": {
+        "decisive": {
+          "positions": 1855,
+          "games": 15,
+          "baseline": {
+            "mse": 1.363091962699447,
+            "mae": 0.9999165232295504,
+            "mean_prediction": 0.01983130553726614,
+            "mean_absolute_prediction": 0.5238435946699581
+          },
+          "candidate": {
+            "mse": 1.1879999611516199,
+            "mae": 1.0227856219794338,
+            "mean_prediction": 0.017611771611188667,
+            "mean_absolute_prediction": 0.30011466685047117
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.17509200154782723,
+          "candidate_minus_baseline_mae": 0.02286909874988341
+        },
+        "draw": {
+          "positions": 1295,
+          "games": 5,
+          "baseline": {
+            "mse": 0.2581959720188046,
+            "mae": 0.42908708021353975,
+            "mean_prediction": 0.008821014367748757,
+            "mean_absolute_prediction": 0.42908708021353975
+          },
+          "candidate": {
+            "mse": 0.05817063053925265,
+            "mae": 0.19131856677149384,
+            "mean_prediction": -0.007248742176259375,
+            "mean_absolute_prediction": 0.19131856677149384
+          },
+          "zero": {
+            "mse": 0.0,
+            "mae": 0.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.20002534147955198,
+          "candidate_minus_baseline_mae": -0.23776851344204591
+        }
+      },
+      "bootstrap_game_level": {
+        "unit": "whole game, paired between models",
+        "samples": 2000,
+        "seed": 1,
+        "confidence_level": 0.95,
+        "scored_games": 20,
+        "interpretation": "descriptive percentile interval on this fixed benchmark; not a strength confidence interval",
+        "candidate_minus_baseline_mse": [
+          -0.2693723617811181,
+          -0.10236395488702418
+        ],
+        "candidate_minus_baseline_mae": [
+          -0.1511202282769044,
+          0.005925093758626728
+        ]
+      },
+      "equal_game_mean_differences": {
+        "mse": -0.18842217789499502,
+        "mae": -0.04671546805493647
+      },
+      "benchmark_dir": "runs/2026-11-06-hikaru-value-benchmark-01",
+      "benchmark_sha256": {
+        "games": "528f95181f27e4b938db02cb0de1a6dc91a9eb3ac19cf309240db6f5b2bf281c",
+        "manifest": "a08c9d2d72639a8d07ce6cc6718d506a3fecee6ad7be0b8e31ecfc4c642ef095"
+      },
+      "benchmark_generator_checkpoint_sha256": "b6360d2b1de42fc704813248946830394bd3eccafa0ab251fd997f627abef12a"
+    }
+  },
+  {
+    "game": 80,
+    "checkpoint": "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_80.pt",
+    "checkpoint_sha256": "d68cd15907cafe770eed4e7fddf3ae4dde8b72a7bfd4a9c577b8bdc99b05ef1b",
+    "metrics": {
+      "games": 20,
+      "completed_games": 20,
+      "excluded_unknown_outcome_games": 0,
+      "excluded_unknown_outcome_positions": 0,
+      "termination_counts": {
+        "insufficient_material": 4,
+        "checkmate": 15,
+        "threefold_repetition": 1
+      },
+      "result_counts": {
+        "1/2-1/2": 5,
+        "1-0": 11,
+        "0-1": 4
+      },
+      "value_perspective": "player to move",
+      "aggregation": "sample-weighted over every pre-move position of completed games",
+      "target_interpretation": "Observed outcomes under the frozen baseline stochastic benchmark policy; not perfect-play labels",
+      "all": {
+        "positions": 3150,
+        "games": 20,
+        "baseline": {
+          "mse": 0.9088569443085163,
+          "mae": 0.7652421966563016,
+          "mean_prediction": 0.015304852500908994,
+          "mean_absolute_prediction": 0.4848881387267639
+        },
+        "candidate": {
+          "mse": 0.7463758581449623,
+          "mae": 0.692679203582996,
+          "mean_prediction": -0.008610417081148453,
+          "mean_absolute_prediction": 0.2751599961556106
+        },
+        "zero": {
+          "mse": 0.5888888888888889,
+          "mae": 0.5888888888888889,
+          "mean_prediction": 0.0,
+          "mean_absolute_prediction": 0.0
+        },
+        "candidate_minus_baseline_mse": -0.16248108616355394,
+        "candidate_minus_baseline_mae": -0.0725629930733056
+      },
+      "by_phase": {
+        "opening": {
+          "positions": 400,
+          "games": 20,
+          "baseline": {
+            "mse": 1.1678126693728281,
+            "mae": 0.9439946950081503,
+            "mean_prediction": 0.008352941671037116,
+            "mean_absolute_prediction": 0.4145025900384644
+          },
+          "candidate": {
+            "mse": 0.8947801993657333,
+            "mae": 0.8293678639098653,
+            "mean_prediction": 0.001704201628745068,
+            "mean_absolute_prediction": 0.2133017464054865
+          },
+          "zero": {
+            "mse": 0.75,
+            "mae": 0.75,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.27303247000709485,
+          "candidate_minus_baseline_mae": -0.11462683109828498
+        },
+        "later": {
+          "positions": 2750,
+          "games": 20,
+          "baseline": {
+            "mse": 0.8711906570264346,
+            "mae": 0.7392418332596691,
+            "mean_prediction": 0.01631603953070854,
+            "mean_absolute_prediction": 0.49512603671778926
+          },
+          "candidate": {
+            "mse": 0.7247897721492138,
+            "mae": 0.6727972166263604,
+            "mean_prediction": -0.010110725257132965,
+            "mean_absolute_prediction": 0.2841575597556287
+          },
+          "zero": {
+            "mse": 0.5654545454545454,
+            "mae": 0.5654545454545454,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.1464008848772208,
+          "candidate_minus_baseline_mae": -0.0664446166333087
+        }
+      },
+      "by_target_outcome": {
+        "win": {
+          "positions": 933,
+          "games": 15,
+          "baseline": {
+            "mse": 1.3422640682058506,
+            "mae": 0.9802026145869172,
+            "mean_prediction": 0.019797385413082874,
+            "mean_absolute_prediction": 0.5407116426887901
+          },
+          "candidate": {
+            "mse": 1.234206439857255,
+            "mae": 1.029676803678927,
+            "mean_prediction": -0.02967680367892698,
+            "mean_absolute_prediction": 0.33726641779794436
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.10805762834859567,
+          "candidate_minus_baseline_mae": 0.049474189092009846
+        },
+        "draw": {
+          "positions": 1295,
+          "games": 5,
+          "baseline": {
+            "mse": 0.2581959720188046,
+            "mae": 0.42908708021353975,
+            "mean_prediction": 0.008821014367748757,
+            "mean_absolute_prediction": 0.42908708021353975
+          },
+          "candidate": {
+            "mse": 0.06974291682563483,
+            "mae": 0.21042057313159843,
+            "mean_prediction": -0.020224515229156134,
+            "mean_absolute_prediction": 0.21042057313159843
+          },
+          "zero": {
+            "mse": 0.0,
+            "mae": 0.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.1884530551931698,
+          "candidate_minus_baseline_mae": -0.21866650708194132
+        },
+        "loss": {
+          "positions": 922,
+          "games": 15,
+          "baseline": {
+            "mse": 1.384168346172902,
+            "mae": 1.0198656303483973,
+            "mean_prediction": 0.019865630348397362,
+            "mean_absolute_prediction": 0.5067743009589274
+          },
+          "candidate": {
+            "mse": 1.2030935655971964,
+            "mae": 1.0290199471242716,
+            "mean_prediction": 0.029019947124271625,
+            "mean_absolute_prediction": 0.30324270919660673
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.18107478057570559,
+          "candidate_minus_baseline_mae": 0.009154316775874305
+        }
+      },
+      "by_game_result": {
+        "1-0": {
+          "positions": 1337,
+          "games": 11,
+          "baseline": {
+            "mse": 1.3575599139995977,
+            "mae": 0.9948404588039234,
+            "mean_prediction": -0.002479374131528074,
+            "mean_absolute_prediction": 0.526411990402397
+          },
+          "candidate": {
+            "mse": 1.1745737157033311,
+            "mae": 1.0138176942070942,
+            "mean_prediction": -0.030515912734751367,
+            "mean_absolute_prediction": 0.3060247530417248
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.1829861982962666,
+          "candidate_minus_baseline_mae": 0.018977235403170867
+        },
+        "0-1": {
+          "positions": 518,
+          "games": 4,
+          "baseline": {
+            "mse": 1.3773706289382475,
+            "mae": 1.0130182570848851,
+            "mean_prediction": 0.0774169787364512,
+            "mean_absolute_prediction": 0.5172143570362306
+          },
+          "candidate": {
+            "mse": 1.3327448223399234,
+            "mae": 1.0694412971546956,
+            "mean_prediction": 0.07696468869208908,
+            "mean_absolute_prediction": 0.3573441136447249
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.04462580659832405,
+          "candidate_minus_baseline_mae": 0.05642304006981047
+        },
+        "1/2-1/2": {
+          "positions": 1295,
+          "games": 5,
+          "baseline": {
+            "mse": 0.2581959720188046,
+            "mae": 0.42908708021353975,
+            "mean_prediction": 0.008821014367748757,
+            "mean_absolute_prediction": 0.42908708021353975
+          },
+          "candidate": {
+            "mse": 0.06974291682563483,
+            "mae": 0.21042057313159843,
+            "mean_prediction": -0.020224515229156134,
+            "mean_absolute_prediction": 0.21042057313159843
+          },
+          "zero": {
+            "mse": 0.0,
+            "mae": 0.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.1884530551931698,
+          "candidate_minus_baseline_mae": -0.21866650708194132
+        }
+      },
+      "by_game_outcome": {
+        "decisive": {
+          "positions": 1855,
+          "games": 15,
+          "baseline": {
+            "mse": 1.363091962699447,
+            "mae": 0.9999165232295504,
+            "mean_prediction": 0.01983130553726614,
+            "mean_absolute_prediction": 0.5238435946699581
+          },
+          "candidate": {
+            "mse": 1.2187422511414738,
+            "mae": 1.0293503229547263,
+            "mean_prediction": -0.0005024617702751659,
+            "mean_absolute_prediction": 0.3203554424176569
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.14434971155797327,
+          "candidate_minus_baseline_mae": 0.029433799725175902
+        },
+        "draw": {
+          "positions": 1295,
+          "games": 5,
+          "baseline": {
+            "mse": 0.2581959720188046,
+            "mae": 0.42908708021353975,
+            "mean_prediction": 0.008821014367748757,
+            "mean_absolute_prediction": 0.42908708021353975
+          },
+          "candidate": {
+            "mse": 0.06974291682563483,
+            "mae": 0.21042057313159843,
+            "mean_prediction": -0.020224515229156134,
+            "mean_absolute_prediction": 0.21042057313159843
+          },
+          "zero": {
+            "mse": 0.0,
+            "mae": 0.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.1884530551931698,
+          "candidate_minus_baseline_mae": -0.21866650708194132
+        }
+      },
+      "bootstrap_game_level": {
+        "unit": "whole game, paired between models",
+        "samples": 2000,
+        "seed": 1,
+        "confidence_level": 0.95,
+        "scored_games": 20,
+        "interpretation": "descriptive percentile interval on this fixed benchmark; not a strength confidence interval",
+        "candidate_minus_baseline_mse": [
+          -0.2542792924642428,
+          -0.07114267405974053
+        ],
+        "candidate_minus_baseline_mae": [
+          -0.13804131505811582,
+          0.016191423660166796
+        ]
+      },
+      "equal_game_mean_differences": {
+        "mse": -0.1634876058727428,
+        "mae": -0.03821890843332536
+      },
+      "benchmark_dir": "runs/2026-11-06-hikaru-value-benchmark-01",
+      "benchmark_sha256": {
+        "games": "528f95181f27e4b938db02cb0de1a6dc91a9eb3ac19cf309240db6f5b2bf281c",
+        "manifest": "a08c9d2d72639a8d07ce6cc6718d506a3fecee6ad7be0b8e31ecfc4c642ef095"
+      },
+      "benchmark_generator_checkpoint_sha256": "b6360d2b1de42fc704813248946830394bd3eccafa0ab251fd997f627abef12a"
+    }
+  },
+  {
+    "game": 100,
+    "checkpoint": "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_100.pt",
+    "checkpoint_sha256": "8426eb6aa18c9c58be09bf34eb8e8971af590e9cfdd6f3a257e60ea34efeffae",
+    "metrics": {
+      "games": 20,
+      "completed_games": 20,
+      "excluded_unknown_outcome_games": 0,
+      "excluded_unknown_outcome_positions": 0,
+      "termination_counts": {
+        "insufficient_material": 4,
+        "checkmate": 15,
+        "threefold_repetition": 1
+      },
+      "result_counts": {
+        "1/2-1/2": 5,
+        "1-0": 11,
+        "0-1": 4
+      },
+      "value_perspective": "player to move",
+      "aggregation": "sample-weighted over every pre-move position of completed games",
+      "target_interpretation": "Observed outcomes under the frozen baseline stochastic benchmark policy; not perfect-play labels",
+      "all": {
+        "positions": 3150,
+        "games": 20,
+        "baseline": {
+          "mse": 0.9088569443085163,
+          "mae": 0.7652421966563016,
+          "mean_prediction": 0.015304852500908994,
+          "mean_absolute_prediction": 0.4848881387267639
+        },
+        "candidate": {
+          "mse": 0.809745801011443,
+          "mae": 0.7241394660023359,
+          "mean_prediction": 0.015792928293461926,
+          "mean_absolute_prediction": 0.3028859869257865
+        },
+        "zero": {
+          "mse": 0.5888888888888889,
+          "mae": 0.5888888888888889,
+          "mean_prediction": 0.0,
+          "mean_absolute_prediction": 0.0
+        },
+        "candidate_minus_baseline_mse": -0.09911114329707327,
+        "candidate_minus_baseline_mae": -0.041102730653965636
+      },
+      "by_phase": {
+        "opening": {
+          "positions": 400,
+          "games": 20,
+          "baseline": {
+            "mse": 1.1678126693728281,
+            "mae": 0.9439946950081503,
+            "mean_prediction": 0.008352941671037116,
+            "mean_absolute_prediction": 0.4145025900384644
+          },
+          "candidate": {
+            "mse": 0.9789750661394809,
+            "mae": 0.8677292214545014,
+            "mean_prediction": 0.04261261990017374,
+            "mean_absolute_prediction": 0.2506756837847934
+          },
+          "zero": {
+            "mse": 0.75,
+            "mae": 0.75,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.1888376032333472,
+          "candidate_minus_baseline_mae": -0.07626547355364888
+        },
+        "later": {
+          "positions": 2750,
+          "games": 20,
+          "baseline": {
+            "mse": 0.8711906570264346,
+            "mae": 0.7392418332596691,
+            "mean_prediction": 0.01631603953070854,
+            "mean_absolute_prediction": 0.49512603671778926
+          },
+          "candidate": {
+            "mse": 0.7851306351746375,
+            "mae": 0.7032536833911118,
+            "mean_prediction": 0.01189188224157657,
+            "mean_absolute_prediction": 0.3104802128372037
+          },
+          "zero": {
+            "mse": 0.5654545454545454,
+            "mae": 0.5654545454545454,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.08606002185179706,
+          "candidate_minus_baseline_mae": -0.03598814986855725
+        }
+      },
+      "by_target_outcome": {
+        "win": {
+          "positions": 933,
+          "games": 15,
+          "baseline": {
+            "mse": 1.3422640682058506,
+            "mae": 0.9802026145869172,
+            "mean_prediction": 0.019797385413082874,
+            "mean_absolute_prediction": 0.5407116426887901
+          },
+          "candidate": {
+            "mse": 1.2784348346685501,
+            "mae": 1.042057807995558,
+            "mean_prediction": -0.04205780799555795,
+            "mean_absolute_prediction": 0.35694151867929963
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.06382923353730052,
+          "candidate_minus_baseline_mae": 0.061855193408640874
+        },
+        "draw": {
+          "positions": 1295,
+          "games": 5,
+          "baseline": {
+            "mse": 0.2581959720188046,
+            "mae": 0.42908708021353975,
+            "mean_prediction": 0.008821014367748757,
+            "mean_absolute_prediction": 0.42908708021353975
+          },
+          "candidate": {
+            "mse": 0.0875574890928739,
+            "mae": 0.2373134159222317,
+            "mean_prediction": 0.007342972630153061,
+            "mean_absolute_prediction": 0.2373134159222317
+          },
+          "zero": {
+            "mse": 0.0,
+            "mae": 0.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.1706384829259307,
+          "candidate_minus_baseline_mae": -0.19177366429130804
+        },
+        "loss": {
+          "positions": 922,
+          "games": 15,
+          "baseline": {
+            "mse": 1.384168346172902,
+            "mae": 1.0198656303483973,
+            "mean_prediction": 0.019865630348397362,
+            "mean_absolute_prediction": 0.5067743009589274
+          },
+          "candidate": {
+            "mse": 1.3498184642787598,
+            "mae": 1.0862022878830937,
+            "mean_prediction": 0.08620228788309373,
+            "mean_absolute_prediction": 0.340285844109708
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.03434988189414212,
+          "candidate_minus_baseline_mae": 0.06633665753469642
+        }
+      },
+      "by_game_result": {
+        "1-0": {
+          "positions": 1337,
+          "games": 11,
+          "baseline": {
+            "mse": 1.3575599139995977,
+            "mae": 0.9948404588039234,
+            "mean_prediction": -0.002479374131528074,
+            "mean_absolute_prediction": 0.526411990402397
+          },
+          "candidate": {
+            "mse": 1.3066025348311496,
+            "mae": 1.0670750812385228,
+            "mean_prediction": -0.011874205891310085,
+            "mean_absolute_prediction": 0.3341015004780594
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.050957379168448114,
+          "candidate_minus_baseline_mae": 0.07223462243459944
+        },
+        "0-1": {
+          "positions": 518,
+          "games": 4,
+          "baseline": {
+            "mse": 1.3773706289382475,
+            "mae": 1.0130182570848851,
+            "mean_prediction": 0.0774169787364512,
+            "mean_absolute_prediction": 0.5172143570362306
+          },
+          "candidate": {
+            "mse": 1.332789065138083,
+            "mae": 1.0560599626875735,
+            "mean_prediction": 0.10832893406378076,
+            "mean_absolute_prediction": 0.38624764296867165
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.044581563800164536,
+          "candidate_minus_baseline_mae": 0.043041705602688385
+        },
+        "1/2-1/2": {
+          "positions": 1295,
+          "games": 5,
+          "baseline": {
+            "mse": 0.2581959720188046,
+            "mae": 0.42908708021353975,
+            "mean_prediction": 0.008821014367748757,
+            "mean_absolute_prediction": 0.42908708021353975
+          },
+          "candidate": {
+            "mse": 0.0875574890928739,
+            "mae": 0.2373134159222317,
+            "mean_prediction": 0.007342972630153061,
+            "mean_absolute_prediction": 0.2373134159222317
+          },
+          "zero": {
+            "mse": 0.0,
+            "mae": 0.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.1706384829259307,
+          "candidate_minus_baseline_mae": -0.19177366429130804
+        }
+      },
+      "by_game_outcome": {
+        "decisive": {
+          "positions": 1855,
+          "games": 15,
+          "baseline": {
+            "mse": 1.363091962699447,
+            "mae": 0.9999165232295504,
+            "mean_prediction": 0.01983130553726614,
+            "mean_absolute_prediction": 0.5238435946699581
+          },
+          "candidate": {
+            "mse": 1.3139149998979913,
+            "mae": 1.0639991613412765,
+            "mean_prediction": 0.02169195394520585,
+            "mean_absolute_prediction": 0.34866306479619263
+          },
+          "zero": {
+            "mse": 1.0,
+            "mae": 1.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.04917696280145578,
+          "candidate_minus_baseline_mae": 0.0640826381117261
+        },
+        "draw": {
+          "positions": 1295,
+          "games": 5,
+          "baseline": {
+            "mse": 0.2581959720188046,
+            "mae": 0.42908708021353975,
+            "mean_prediction": 0.008821014367748757,
+            "mean_absolute_prediction": 0.42908708021353975
+          },
+          "candidate": {
+            "mse": 0.0875574890928739,
+            "mae": 0.2373134159222317,
+            "mean_prediction": 0.007342972630153061,
+            "mean_absolute_prediction": 0.2373134159222317
+          },
+          "zero": {
+            "mse": 0.0,
+            "mae": 0.0,
+            "mean_prediction": 0.0,
+            "mean_absolute_prediction": 0.0
+          },
+          "candidate_minus_baseline_mse": -0.1706384829259307,
+          "candidate_minus_baseline_mae": -0.19177366429130804
+        }
+      },
+      "bootstrap_game_level": {
+        "unit": "whole game, paired between models",
+        "samples": 2000,
+        "seed": 1,
+        "confidence_level": 0.95,
+        "scored_games": 20,
+        "interpretation": "descriptive percentile interval on this fixed benchmark; not a strength confidence interval",
+        "candidate_minus_baseline_mse": [
+          -0.1879239091422045,
+          0.0038824217150242738
+        ],
+        "candidate_minus_baseline_mae": [
+          -0.11008988310926274,
+          0.05142604827230014
+        ]
+      },
+      "equal_game_mean_differences": {
+        "mse": -0.08762132798931818,
+        "mae": -0.006351221019001513
+      },
+      "benchmark_dir": "runs/2026-11-06-hikaru-value-benchmark-01",
+      "benchmark_sha256": {
+        "games": "528f95181f27e4b938db02cb0de1a6dc91a9eb3ac19cf309240db6f5b2bf281c",
+        "manifest": "a08c9d2d72639a8d07ce6cc6718d506a3fecee6ad7be0b8e31ecfc4c642ef095"
+      },
+      "benchmark_generator_checkpoint_sha256": "b6360d2b1de42fc704813248946830394bd3eccafa0ab251fd997f627abef12a"
+    }
+  }
+]

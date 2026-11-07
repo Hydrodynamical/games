@@ -1,0 +1,100 @@
+[
+  {
+    "pair": 1,
+    "name": "open_game",
+    "moves": [
+      "e2e4",
+      "e7e5"
+    ],
+    "fen_after_opening": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2"
+  },
+  {
+    "pair": 2,
+    "name": "queen_pawn",
+    "moves": [
+      "d2d4",
+      "d7d5"
+    ],
+    "fen_after_opening": "rnbqkbnr/ppp1pppp/8/3p4/3P4/8/PPP1PPPP/RNBQKBNR w KQkq d6 0 2"
+  },
+  {
+    "pair": 3,
+    "name": "english",
+    "moves": [
+      "c2c4",
+      "e7e5"
+    ],
+    "fen_after_opening": "rnbqkbnr/pppp1ppp/8/4p3/2P5/8/PP1PPPPP/RNBQKBNR w KQkq e6 0 2"
+  },
+  {
+    "pair": 4,
+    "name": "reti",
+    "moves": [
+      "g1f3",
+      "d7d5"
+    ],
+    "fen_after_opening": "rnbqkbnr/ppp1pppp/8/3p4/8/5N2/PPPPPPPP/RNBQKB1R w KQkq d6 0 2"
+  },
+  {
+    "pair": 5,
+    "name": "sicilian",
+    "moves": [
+      "e2e4",
+      "c7c5"
+    ],
+    "fen_after_opening": "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2"
+  },
+  {
+    "pair": 6,
+    "name": "indian",
+    "moves": [
+      "d2d4",
+      "g8f6"
+    ],
+    "fen_after_opening": "rnbqkb1r/pppppppp/5n2/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 1 2"
+  },
+  {
+    "pair": 7,
+    "name": "seeded_open_game_7",
+    "moves": [
+      "e2e4",
+      "e7e5",
+      "b2b3",
+      "f8b4"
+    ],
+    "fen_after_opening": "rnbqk1nr/pppp1ppp/8/4p3/1b2P3/1P6/P1PP1PPP/RNBQKBNR w KQkq - 1 3"
+  },
+  {
+    "pair": 8,
+    "name": "seeded_queen_pawn_8",
+    "moves": [
+      "d2d4",
+      "d7d5",
+      "h2h3",
+      "g8h6"
+    ],
+    "fen_after_opening": "rnbqkb1r/ppp1pppp/7n/3p4/3P4/7P/PPP1PPP1/RNBQKBNR w KQkq - 1 3"
+  },
+  {
+    "pair": 9,
+    "name": "seeded_english_9",
+    "moves": [
+      "c2c4",
+      "e7e5",
+      "b1a3",
+      "d7d5"
+    ],
+    "fen_after_opening": "rnbqkbnr/ppp2ppp/8/3pp3/2P5/N7/PP1PPPPP/R1BQKBNR w KQkq d6 0 3"
+  },
+  {
+    "pair": 10,
+    "name": "seeded_reti_10",
+    "moves": [
+      "g1f3",
+      "d7d5",
+      "b1c3",
+      "d8d6"
+    ],
+    "fen_after_opening": "rnb1kbnr/ppp1pppp/3q4/3p4/8/2N2N2/PPPPPPPP/R1BQKB1R w KQkq - 2 3"
+  }
+]

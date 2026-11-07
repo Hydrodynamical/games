@@ -1,25 +1,18 @@
+"""PUCT Monte Carlo tree search with optional neural policy/value evaluation.
+
+The default evaluator uses material and simple piece placement, so playing chess
+needs only Python's standard library. Supplying a PolicyValueNet enables batched
+neural leaf evaluation without changing the search interface.
+"""
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Tuple
-from typing import Dict, Optional, List
 from copy import deepcopy
+from dataclasses import dataclass
 import math
-import numpy as np
+import random
+import time
+from typing import Dict, List, Optional, Tuple
 
-from tqdm import trange
-import torch
-import torch.nn.functional as F
-
-try:
-    # When imported as a package module (e.g. `from scr.mcts import ...`)
-    from .rl_interface import policy_distribution, critic_value, encode_gamestate, move_to_action
-except ImportError:  # pragma: no cover
-    # When executed with `chess/scr` on sys.path (e.g. `python main.py` from chess/scr)
-    from rl_interface import policy_distribution, critic_value, encode_gamestate, move_to_action
-
-# from chess_engine import GameState, Move
-# from rl_interface import PolicyValueNet, policy_distribution, critic_value
 
 @dataclass
 class MCTSDiagnostics:
@@ -30,336 +23,398 @@ class MCTSDiagnostics:
     expanded_nonterminal: int = 0
 
     def add(self, other: "MCTSDiagnostics") -> None:
-        self.sims += other.sims
-        self.terminal_checkmate += other.terminal_checkmate
-        self.terminal_stalemate += other.terminal_stalemate
-        self.terminal_other += other.terminal_other
-        self.expanded_nonterminal += other.expanded_nonterminal
+        for name in self.__dataclass_fields__:
+            setattr(self, name, getattr(self, name) + getattr(other, name))
 
     def terminal_total(self) -> int:
         return self.terminal_checkmate + self.terminal_stalemate + self.terminal_other
+
 
 @dataclass
 class EdgeStats:
     prior: float
     n: int = 0
-    w: float = 0.0  # total value from current player's perspective
+    w: float = 0.0  # total value from the parent player's perspective
 
     @property
     def q(self) -> float:
-        return 0.0 if self.n == 0 else self.w / self.n
+        return self.w / self.n if self.n else 0.0
+
+
+PIECE_VALUES = {"P": 100, "N": 320, "B": 330, "R": 500, "Q": 900, "K": 0}
+
+
+def evaluate_position(gs) -> float:
+    """Bounded static value from the side-to-move's perspective.
+
+    This is a useful starting evaluator, not a trained model or a tactical
+    oracle. Search supplies the look-ahead and exact terminal outcomes.
+    """
+    score = 0.0
+    non_pawn_material = sum(
+        PIECE_VALUES[p[1]] for row in gs.board for p in row
+        if p != "--" and p[1] not in ("P", "K")
+    )
+    for r, row in enumerate(gs.board):
+        for c, piece in enumerate(row):
+            if piece == "--":
+                continue
+            color, kind = piece
+            advancement = (6 - r) if color == "w" else (r - 1)
+            center = 7 - abs(3.5 - r) - abs(3.5 - c)
+            placement = 0.0
+            if kind == "P":
+                placement = 8 * advancement + 2 * center
+            elif kind == "N":
+                placement = 8 * center
+            elif kind == "B":
+                placement = 4 * center
+            elif kind == "R":
+                placement = 2 * advancement
+            elif kind == "K":
+                if non_pawn_material <= 2000:
+                    placement = 5 * center
+                elif (r == (7 if color == "w" else 0)) and c in (2, 6):
+                    placement = 25
+            score += (1 if color == "w" else -1) * (PIECE_VALUES[kind] + placement)
+    if gs.player == "b":
+        score = -score
+    # A static evaluation never equals a proven win/loss.
+    return max(-0.99, min(0.99, math.tanh(score / 600.0)))
+
+
+def _normalise(weights: List[float]) -> List[float]:
+    weights = [max(0.0, float(p)) if math.isfinite(float(p)) else 0.0 for p in weights]
+    total = sum(weights)
+    if not weights:
+        return []
+    return [p / total for p in weights] if total else [1.0 / len(weights)] * len(weights)
+
+
+def _heuristic_priors(moves) -> Dict[object, float]:
+    weights = []
+    for mv in moves:
+        captured = getattr(mv, "piece_captured", "--")
+        promotion = getattr(mv, "promotion", "")
+        weight = 1.0
+        if captured != "--":
+            weight += PIECE_VALUES.get(captured[-1], 0) / 400.0
+        if promotion:
+            weight += PIECE_VALUES.get(promotion[-1].upper(), 0) / 400.0
+        if getattr(mv, "is_castle", False):
+            weight += 0.5
+        weights.append(weight)
+    return dict(zip(moves, _normalise(weights)))
+
+
+def _neural_helpers():
+    # These optional dependencies are deliberately absent from the default path.
+    try:
+        from .rl_interface import encode_gamestate, move_to_action, policy_distribution
+    except ImportError:
+        from rl_interface import encode_gamestate, move_to_action, policy_distribution
+    return encode_gamestate, move_to_action, policy_distribution
+
+
+def _state_signature(gs):
+    """Board identity alone is insufficient for repetition/50-move draws."""
+    return (
+        gs.position_key(),
+        getattr(gs, "halfmove_clock", 0),
+        frozenset(getattr(gs, "position_counts", {}).items()),
+    )
 
 
 class Node:
     def __init__(self, gs):
         self.gs = gs
         self.is_expanded = False
-        self.children: Dict[object, "Node"] = {}
-        self.edges: Dict[object, EdgeStats] = {}  # keyed by Move
-
-        # --- caches to avoid repeated expensive move generation ---
+        self.children: Dict[object, Node] = {}
+        self.edges: Dict[object, EdgeStats] = {}
+        self._base_priors: Dict[object, float] = {}
         self._legal_moves_cache: Optional[List[object]] = None
         self._is_terminal_cache: Optional[bool] = None
-        self._terminal_value_cache: Optional[float] = None  # from player-to-move perspective
+        self._terminal_value_cache: Optional[float] = None
+        self.terminal_reason: Optional[str] = None
+        self._model_id: Optional[int] = None
 
     def legal_moves(self) -> List[object]:
-        """Cached list of legal moves for gs.player at this node."""
         if self._legal_moves_cache is None:
             self._legal_moves_cache = self.gs.get_all_legal_moves(self.gs.player, as_moves=True)
         return self._legal_moves_cache
 
-    def expand(
-        self,
-        model,
-        add_dirichlet_noise: bool = False,
-        dir_alpha: float = 0.3,
-        dir_epsilon: float = 0.25,
-    ):
-        # priors over legal moves (reuse cached legal moves to avoid recomputing)
-        lm = self.legal_moves()
-        # If terminal, there's nothing to expand
-        if len(lm) == 0:
-            self._is_terminal_cache = True
-            self.is_expanded = True
-            return
-
-        priors = policy_distribution(model, self.gs, legal_moves=lm)
-
-        if add_dirichlet_noise and len(priors) > 0:
-            moves = list(priors.keys())
-            p = np.array([max(0.0, float(priors[m])) for m in moves], dtype=np.float64)
-
-            # normalize (avoid weirdness if model returns non-normalized probs)
-            s = p.sum()
-            if s <= 0:
-                p = np.ones_like(p) / len(p)
-            else:
-                p = p / s
-
-            # Dirichlet noise
-            noise = np.random.dirichlet([dir_alpha] * len(moves))
-
-            p = (1.0 - dir_epsilon) * p + dir_epsilon * noise
-
-            priors = {m: float(p[i]) for i, m in enumerate(moves)}
-
-        for mv, prob in priors.items():
-            self.edges[mv] = EdgeStats(prior=float(prob))
-
+    def _set_priors(self, priors) -> None:
+        moves = self.legal_moves()
+        probabilities = _normalise([priors.get(mv, 0.0) for mv in moves])
+        self._base_priors = dict(zip(moves, probabilities))
+        self.edges = {mv: EdgeStats(p) for mv, p in self._base_priors.items()}
         self.is_expanded = True
 
+    def root_noise(self, enabled: bool, alpha: float, epsilon: float) -> None:
+        """Fresh root noise each move, without repeatedly mixing old noise."""
+        moves = list(self.edges)
+        if not moves:
+            return
+        noise = (_normalise([random.gammavariate(alpha, 1.0) for _ in moves])
+                 if enabled else [0.0] * len(moves))
+        for mv, sample in zip(moves, noise):
+            base = self._base_priors[mv]
+            self.edges[mv].prior = ((1 - epsilon) * base + epsilon * sample) if enabled else base
+
+    def expand(self, model=None, add_dirichlet_noise=False, dir_alpha=0.3, dir_epsilon=0.25):
+        if self.is_terminal():
+            self.is_expanded = True
+            return
+        moves = self.legal_moves()
+        if model is None:
+            priors = _heuristic_priors(moves)
+        else:
+            _, _, policy_distribution = _neural_helpers()
+            priors = policy_distribution(model, self.gs, legal_moves=moves)
+        self._set_priors(priors)
+        self._model_id = id(model)
+        self.root_noise(add_dirichlet_noise, dir_alpha, dir_epsilon)
+
     def is_terminal(self) -> bool:
-        if self._is_terminal_cache is not None:
-            return self._is_terminal_cache
-
-        # draw by repetition / 50-move
-        if hasattr(self.gs, "is_draw") and self.gs.is_draw():
-            self._is_terminal_cache = True
-            return True
-
-        # checkmate/stalemate fall out of "no legal moves"
-        self._is_terminal_cache = (len(self.legal_moves()) == 0)
+        if self._is_terminal_cache is None:
+            # Checkmate takes precedence over a draw counter reached on that move.
+            if not self.legal_moves():
+                mover = self.gs.player
+                king = self.gs.get_king_coord(mover)
+                opp = "b" if mover == "w" else "w"
+                in_check = king is not None and self.gs.is_checked(king, opp)
+                self._terminal_value_cache = -1.0 if in_check else 0.0
+                self.terminal_reason = "checkmate" if in_check else "stalemate"
+                self._is_terminal_cache = True
+            elif hasattr(self.gs, "is_draw") and self.gs.is_draw():
+                self._terminal_value_cache = 0.0
+                self.terminal_reason = "draw"
+                self._is_terminal_cache = True
+            else:
+                self._is_terminal_cache = False
         return self._is_terminal_cache
 
     def terminal_value(self) -> float:
-        """Terminal node value from perspective of player to move.
-
-        - draw => 0
-        - checkmate => -1
-        - stalemate => 0
-        """
-        if self._terminal_value_cache is not None:
-            return self._terminal_value_cache
-
-        if hasattr(self.gs, "is_draw") and self.gs.is_draw():
-            self._terminal_value_cache = 0.0
-            return 0.0
-
-        mover = self.gs.player
-        opp = self.gs.opponent_color() if hasattr(self.gs, "opponent_color") else ("b" if mover == "w" else "w")
-
-        king_sq = self.gs.get_king_coord(mover) if hasattr(self.gs, "get_king_coord") else None
-        in_check = False
-        if king_sq is not None and hasattr(self.gs, "is_checked"):
-            in_check = self.gs.is_checked(king_sq, opp)
-
-        self._terminal_value_cache = (-1.0 if in_check else 0.0)
+        """Exact result from the player-to-move's perspective."""
+        if not self.is_terminal():
+            raise ValueError("terminal_value requires a terminal position")
         return self._terminal_value_cache
 
 
-
 def ucb_score(parent_visits: int, edge: EdgeStats, c_puct: float) -> float:
-    # AlphaZero-style
-    return edge.q + c_puct * edge.prior * math.sqrt(parent_visits + 1e-8) / (1 + edge.n)
+    return edge.q + c_puct * edge.prior * math.sqrt(parent_visits + 1) / (1 + edge.n)
 
 
 def select_move(node: Node, c_puct: float) -> object:
-    parent_n = sum(e.n for e in node.edges.values())
-    best_mv, best_sc = None, -1e30
-    for mv, e in node.edges.items():
-        sc = ucb_score(parent_n, e, c_puct)
-        if sc > best_sc:
-            best_mv, best_sc = mv, sc
-    return best_mv
+    # Try every legal action once, in prior order, before exploiting its value.
+    # In particular an immediate mate cannot be starved by a misleading prior.
+    unvisited = [mv for mv, edge in node.edges.items() if edge.n == 0]
+    if unvisited:
+        return max(unvisited, key=lambda mv: node.edges[mv].prior)
+    visits = sum(edge.n for edge in node.edges.values())
+    return max(node.edges, key=lambda mv: ucb_score(visits, node.edges[mv], c_puct))
 
 
 def apply_move_copy(gs, mv):
-    if hasattr(gs, "fast_copy_for_search"):
-        gs2 = gs.fast_copy_for_search()
-    else:
-        gs2 = deepcopy(gs)
-    gs2.make_move(mv)
-    return gs2
+    result = gs.fast_copy_for_search() if hasattr(gs, "fast_copy_for_search") else deepcopy(gs)
+    result.make_move(mv)
+    return result
 
 
-def _expand_from_logits(
-    node: Node,
-    logits_row: torch.Tensor,  # shape [4096] on device
-    *,
-    add_dirichlet_noise: bool,
-    dir_alpha: float,
-    dir_epsilon: float,
-) -> None:
-    """Expand a node using precomputed policy logits (batched NN inference)."""
-    lm = node.legal_moves()
-    if len(lm) == 0:
-        node._is_terminal_cache = True
-        node.is_expanded = True
-        return
+def best_move(distribution, root: Node | None = None):
+    """Choose by visits/probability, then value and prior; return None if terminal."""
+    if not distribution:
+        return None
 
-    legal_actions = [move_to_action(mv) for mv in lm]
-    a_t = torch.tensor(legal_actions, device=logits_row.device, dtype=torch.long)
-    legal_logits = logits_row[a_t]  # [num_legal]
-    legal_probs = F.softmax(legal_logits, dim=0)
+    def score(mv):
+        edge = root.edges.get(mv) if root is not None else None
+        return (distribution[mv], edge.q if edge else 0.0, edge.prior if edge else 0.0)
 
-    # Move to CPU as a small vector (minimizes sync/copy)
-    p = legal_probs.detach().cpu().numpy()
+    return max(distribution, key=score)
 
-    if add_dirichlet_noise and len(lm) > 0:
-        pn = np.array([max(0.0, float(x)) for x in p], dtype=np.float64)
-        s = pn.sum()
-        if s <= 0:
-            pn = np.ones_like(pn) / len(pn)
-        else:
-            pn = pn / s
-        noise = np.random.dirichlet([dir_alpha] * len(lm))
-        pn = (1.0 - dir_epsilon) * pn + dir_epsilon * noise
-        p = pn
 
-    node.edges = {mv: EdgeStats(prior=float(p[i])) for i, mv in enumerate(lm)}
-    node.is_expanded = True
+def _expand_from_logits(node, logits_row, *, add_dirichlet_noise, dir_alpha, dir_epsilon):
+    import torch
+    _, move_to_action, _ = _neural_helpers()
+    moves = node.legal_moves()
+    actions = torch.tensor([move_to_action(mv) for mv in moves],
+                           device=logits_row.device, dtype=torch.long)
+    probabilities = torch.softmax(logits_row[actions], dim=0).detach().cpu().tolist()
+    node._set_priors(dict(zip(moves, probabilities)))
+    node.root_noise(add_dirichlet_noise, dir_alpha, dir_epsilon)
 
 
 def mcts_search(
     root_gs,
-    model,
+    model=None,
     num_sims: int = 200,
     c_puct: float = 1.5,
     show_progress: bool = False,
-    diagnostics: MCTSDiagnostics | None = None,   # NEW optional output
-    add_root_dirichlet: bool = False,   # NEW
-    dir_alpha: float = 0.3,             # NEW
-    dir_epsilon: float = 0.25,          # NEW
-    root: Node | None = None,           # NEW: reuse tree root across plies
-    return_root: bool = False,          # NEW: optionally return root node
-    batch_size: int = 16,               # NEW: batch leaf NN evals (esp. good on MPS)
+    diagnostics: MCTSDiagnostics | None = None,
+    add_root_dirichlet: bool = False,
+    dir_alpha: float = 0.3,
+    dir_epsilon: float = 0.25,
+    root: Node | None = None,
+    return_root: bool = False,
+    batch_size: int = 16,
+    time_limit: float | None = None,
+    stop_event=None,
 ) -> Dict[object, float] | Tuple[Dict[object, float], Node]:
-    # Reuse provided root if available; otherwise start fresh from root_gs.
-    if root is None:
-        if hasattr(root_gs, "fast_copy_for_search"):
-            root = Node(root_gs.fast_copy_for_search())
-        else:
-            root = Node(deepcopy(root_gs))
+    """Return legal move probabilities from completed MCTS visit counts.
 
+    ``num_sims`` bounds iterations; ``time_limit`` is an optional seconds budget.
+    ``stop_event`` may be a threading.Event. Cancellation is checked between
+    simulations; move generation and an in-flight neural batch finish first.
+    A zero budget returns normalized priors, and a terminal root returns {}.
+    Input positions are never changed. Reused roots must have identical board,
+    side, special rights, halfmove clock, repetition history, and evaluator.
+    """
+    if not isinstance(num_sims, int) or num_sims < 0:
+        raise ValueError("num_sims must be a nonnegative integer")
+    if not isinstance(batch_size, int) or batch_size < 1:
+        raise ValueError("batch_size must be a positive integer")
+    if not math.isfinite(c_puct) or c_puct < 0:
+        raise ValueError("c_puct must be finite and nonnegative")
+    if not math.isfinite(dir_alpha) or dir_alpha <= 0:
+        raise ValueError("dir_alpha must be finite and positive")
+    if not math.isfinite(dir_epsilon) or not 0 <= dir_epsilon <= 1:
+        raise ValueError("dir_epsilon must lie in [0, 1]")
+    if time_limit is not None and (not math.isfinite(time_limit) or time_limit < 0):
+        raise ValueError("time_limit must be finite and nonnegative")
+
+    deadline = None if time_limit is None else time.monotonic() + time_limit
+
+    def stopped():
+        return ((stop_event is not None and stop_event.is_set())
+                or (deadline is not None and time.monotonic() >= deadline))
+
+    if root is None or _state_signature(root.gs) != _state_signature(root_gs) or (
+        root.is_expanded and root._model_id != id(model)
+    ):
+        copied = root_gs.fast_copy_for_search() if hasattr(root_gs, "fast_copy_for_search") else deepcopy(root_gs)
+        root = Node(copied)
+    local = MCTSDiagnostics()
+    if root.is_terminal():
+        return ({}, root) if return_root else {}
     if not root.is_expanded:
-        root.expand(
-            model,
-            add_dirichlet_noise=add_root_dirichlet,
-            dir_alpha=dir_alpha,
-            dir_epsilon=dir_epsilon,
-        )
+        # Even an already-expired budget needs a legal fallback; avoid neural
+        # inference in that case, and do not mark those priors as model-derived.
+        root.expand(None if stopped() else model)
+    root.root_noise(add_root_dirichlet, dir_alpha, dir_epsilon)
 
-    sim_iter = trange(num_sims, desc="MCTS", leave=False) if show_progress else range(num_sims)
-    
-    local = MCTSDiagnostics() # NEW: local counters for this call
+    pending = []
+    pending_ids = set()
 
-    # Accumulate nonterminal leaves for batched NN eval
-    pending_nodes: List[Node] = []
-    pending_paths: List[List[tuple[Node, object]]] = []
-
-    def flush_batch() -> None:
-        """Evaluate pending leaves in one forward pass, expand them, then backprop."""
-        nonlocal pending_nodes, pending_paths
-        if not pending_nodes:
-            return
-
-        model.eval()
-        device = next(model.parameters()).device
-
-        xs = torch.stack([encode_gamestate(n.gs) for n in pending_nodes], dim=0).to(device)
-        with torch.inference_mode():
-            logits, values = model(xs)  # logits [B,4096], values [B,1]
-
-        values = values.squeeze(1)  # [B]
-
-        for i, (node, path) in enumerate(zip(pending_nodes, pending_paths)):
-            if not node.is_expanded:
-                local.expanded_nonterminal += 1
-                _expand_from_logits(
-                    node,
-                    logits[i],
-                    add_dirichlet_noise=False,
-                    dir_alpha=dir_alpha,
-                    dir_epsilon=dir_epsilon,
-                )
-
-            v = float(values[i].detach().item())
-
-            # Backprop values ONLY.
-            # NOTE: visit counts were already incremented as "virtual visits" during selection,
-            # so do NOT increment e.n here again.
-            for parent, mv in reversed(path):
-                v = -v
-                e = parent.edges[mv]
-                e.w += v
-
-        pending_nodes = []
-        pending_paths = []
-
-    for _ in sim_iter:
-        local.sims += 1
-
-        node = root
-        path: List[tuple[Node, object]] = []
-
-        # Selection
-        while node.is_expanded and not node.is_terminal():
-            mv = select_move(node, c_puct)
-            path.append((node, mv))
-            if mv not in node.children:
-                node.children[mv] = Node(apply_move_copy(node.gs, mv))
-            node = node.children[mv]
-
-        # Evaluation / Expansion
-        if node.is_terminal():
-            v = node.terminal_value()
-            if v < 0:
-                local.terminal_checkmate += 1
-            elif v == 0.0:
-                local.terminal_stalemate += 1
+    def backprop(path, value, reserved=False):
+        for parent, mv in reversed(path):
+            value = -value
+            edge = parent.edges[mv]
+            if reserved:
+                edge.w += 1.0 + value  # remove the virtual loss
             else:
-                local.terminal_other += 1
+                edge.n += 1
+                edge.w += value
 
-            # Backprop terminal immediately (no NN needed)
-            for parent, mv in reversed(path):
-                v = -v
-                e = parent.edges[mv]
-                e.n += 1
-                e.w += v
+    def flush_batch():
+        if not pending:
+            return
+        completed = 0
+        try:
+            import torch
+            encode_gamestate, _, _ = _neural_helpers()
+            model.eval()
+            device = next(model.parameters()).device
+            states = torch.stack([encode_gamestate(node.gs) for node, _ in pending]).to(device)
+            with torch.inference_mode():
+                logits, values = model(states)
+            if not torch.is_tensor(logits) or logits.ndim != 2 or logits.shape[0] != len(pending):
+                raise ValueError("neural policy must have shape [batch, actions]")
+            if not torch.is_tensor(values) or values.numel() != len(pending):
+                raise ValueError("neural value must contain one value per position")
+            values = values.reshape(-1).detach().cpu().tolist()
+            for index, (node, path) in enumerate(pending):
+                _expand_from_logits(node, logits[index], add_dirichlet_noise=False,
+                                    dir_alpha=dir_alpha, dir_epsilon=dir_epsilon)
+                node._model_id = id(model)
+                value = float(values[index])
+                if not math.isfinite(value):
+                    value = 0.0
+                backprop(path, max(-1.0, min(1.0, value)), reserved=True)
+                local.expanded_nonterminal += 1
+                completed += 1
+        except BaseException:
+            # Do not leave virtual visits/losses in a reusable tree on failure.
+            # Already completed paths must not be rolled back.
+            for node, path in pending[completed:]:
+                node.edges.clear()
+                node._base_priors.clear()
+                node.is_expanded = False
+                node._model_id = None
+                for parent, mv in path:
+                    parent.edges[mv].n -= 1
+                    parent.edges[mv].w += 1.0
+            raise
+        finally:
+            pending.clear()
+            pending_ids.clear()
 
-        else:
-            pending_nodes.append(node)
-            pending_paths.append(path)
+    iterations = range(num_sims)
+    progress = None
+    if show_progress:
+        try:
+            from tqdm import tqdm
+            progress = tqdm(iterations, desc="MCTS", leave=False)
+            iterations = progress
+        except ImportError:
+            pass
+    try:
+        for _ in iterations:
+            if stopped():
+                break
+            node = root
+            path = []
+            while node.is_expanded and not node.is_terminal():
+                mv = select_move(node, c_puct)
+                path.append((node, mv))
+                if mv not in node.children:
+                    node.children[mv] = Node(apply_move_copy(node.gs, mv))
+                node = node.children[mv]
+                # A pending leaf must be evaluated before it can be selected
+                # again; this avoids counting duplicate NN evaluations as work.
+                if id(node) in pending_ids:
+                    flush_batch()
+            local.sims += 1
+            if node.is_terminal():
+                value = node.terminal_value()
+                if node.terminal_reason == "checkmate":
+                    local.terminal_checkmate += 1
+                elif node.terminal_reason == "stalemate":
+                    local.terminal_stalemate += 1
+                else:
+                    local.terminal_other += 1
+                backprop(path, value)
+            elif model is None:
+                node.expand()
+                local.expanded_nonterminal += 1
+                backprop(path, evaluate_position(node.gs))
+            else:
+                pending.append((node, path))
+                pending_ids.add(id(node))
+                for parent, mv in path:
+                    parent.edges[mv].n += 1
+                    parent.edges[mv].w -= 1.0
+                if len(pending) >= batch_size:
+                    flush_batch()
+        flush_batch()
+    finally:
+        if progress is not None:
+            progress.close()
+        if diagnostics is not None:
+            diagnostics.add(local)
 
-            # --- Virtual visits ---
-            # Immediately increment visit counts along the selected path so UCB changes
-            # for subsequent sims in the same batch. This prevents the search from collapsing
-            # onto a single path when backprop is deferred.
-            for parent, mv in path:
-                parent.edges[mv].n += 1
-
-            if len(pending_nodes) >= max(1, int(batch_size)):
-                flush_batch()
-
-        # "Frozen" terminal updates via tqdm (no scrolling)
-        if show_progress:
-            try:
-                if local.sims == 1 or local.sims % 10 == 0 or local.sims == num_sims:
-                    sim_iter.set_postfix(
-                        cm=local.terminal_checkmate,
-                        sm=local.terminal_stalemate,
-                        other=local.terminal_other,
-                        exp=local.expanded_nonterminal,
-                    )
-            except Exception:
-                pass
-
-        # NOTE: Backprop for nonterminal leaves is deferred to flush_batch().
-
-    # Flush any leftover pending leaves
-    flush_batch()
-
-    # NEW: accumulate into the passed-in object
-    if diagnostics is not None:
-        diagnostics.add(local)
-    # NOTE: For in-place progress output, call with show_progress=True.
-
-    # Return improved move distribution proportional to visit counts
-    visits = {mv: e.n for mv, e in root.edges.items()}
-    total = sum(visits.values())
-    pi = {mv: (n / total if total > 0 else 0.0) for mv, n in visits.items()}
-    if return_root:
-        return pi, root
-    return pi
-
-# https://chatgpt.com/share/695c85a9-4ed4-8006-83ab-d4bbc3e7b500
+    total = sum(edge.n for edge in root.edges.values())
+    if total:
+        probabilities = {mv: edge.n / total for mv, edge in root.edges.items()}
+    else:
+        probabilities = {mv: edge.prior for mv, edge in root.edges.items()}
+    return (probabilities, root) if return_root else probabilities

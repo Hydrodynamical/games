@@ -1,0 +1,7 @@
+#!/bin/sh
+# UCI executable for chess GUIs, independent of the GUI's working directory.
+engine_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+if [ -x "$engine_dir/.venv/bin/python" ]; then
+    exec "$engine_dir/.venv/bin/python" "$engine_dir/chess/cli.py" uci
+fi
+exec python3 "$engine_dir/chess/cli.py" uci

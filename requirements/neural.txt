@@ -1,0 +1,4 @@
+# Optional: only needed for neural evaluation and self-play training.
+numpy==2.4.1
+torch==2.9.1
+tqdm==4.67.1

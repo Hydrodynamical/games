@@ -1,0 +1,42 @@
+{
+  "config": {
+    "dataset": "data/hikaru-blitz-5000/prepared",
+    "split": "test",
+    "dataset_manifest_sha256": "cd796ee9ce0a541d07565c0bcccd27c2c91ef01aea88d26231ba0dbe7636829e",
+    "policy_population": "Hikaru turns only; full-action probabilities",
+    "value_population": "both players; recorded human outcomes",
+    "used_for_selection": false
+  },
+  "baseline": {
+    "checkpoint": "runs/2026-11-06-hikaru-supervised-02/checkpoints/best.pt",
+    "checkpoint_sha256": "b6360d2b1de42fc704813248946830394bd3eccafa0ab251fd997f627abef12a",
+    "metrics": {
+      "policy_sample_count": 22547,
+      "value_sample_count": 44899,
+      "policy_nll_full_action": 3.63930086641823,
+      "policy_top1_full_action": 0.20259901539007408,
+      "policy_top5_full_action": 0.47247970905220205,
+      "value_mse": 0.9967028468899712,
+      "value_mae": 0.8054767679500671,
+      "zero_value_baseline_mse": 0.9080157687253614,
+      "predicted_value_mean": 0.0039031835886765096,
+      "target_value_mean": 0.00527851399808459
+    }
+  },
+  "candidate": {
+    "checkpoint": "runs/2026-11-06-hikaru-selfplay-01/checkpoints/policy_value_net_100.pt",
+    "checkpoint_sha256": "8426eb6aa18c9c58be09bf34eb8e8971af590e9cfdd6f3a257e60ea34efeffae",
+    "metrics": {
+      "policy_sample_count": 22547,
+      "value_sample_count": 44899,
+      "policy_nll_full_action": 3.8532496069246065,
+      "policy_top1_full_action": 0.10852885084490176,
+      "policy_top5_full_action": 0.34195236616844815,
+      "value_mse": 0.9130530722802533,
+      "value_mae": 0.8482066042988934,
+      "zero_value_baseline_mse": 0.9080157687253614,
+      "predicted_value_mean": 0.046201670479675175,
+      "target_value_mean": 0.00527851399808459
+    }
+  }
+}

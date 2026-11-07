@@ -1,0 +1,257 @@
+{
+  "schema_version": 1,
+  "status": "completed",
+  "started_at": "2026-11-06T20:07:02.121245+00:00",
+  "username": "hikaru",
+  "requested_games": 5000,
+  "selected_games": 5000,
+  "source": "Chess.com Published-Data API",
+  "user_agent": "HydrodynamicalChessResearch/1.0 (+https://github.com/Hydrodynamical/games)",
+  "selection": {
+    "order": "newest eligible games; output oldest first",
+    "time_class": "blitz",
+    "rules": "chess",
+    "rated": true,
+    "known_result": true,
+    "colors": [
+      "w",
+      "b"
+    ],
+    "outcomes": [
+      "1-0",
+      "0-1",
+      "1/2-1/2"
+    ]
+  },
+  "profile": {
+    "username": "hikaru",
+    "name": "Hikaru Nakamura",
+    "title": "GM",
+    "player_id": 15448422,
+    "url": "https://www.chess.com/member/Hikaru"
+  },
+  "archives_visited": [
+    "https://api.chess.com/pub/player/hikaru/games/2026/11",
+    "https://api.chess.com/pub/player/hikaru/games/2026/10",
+    "https://api.chess.com/pub/player/hikaru/games/2026/09",
+    "https://api.chess.com/pub/player/hikaru/games/2026/08",
+    "https://api.chess.com/pub/player/hikaru/games/2026/07",
+    "https://api.chess.com/pub/player/hikaru/games/2026/06",
+    "https://api.chess.com/pub/player/hikaru/games/2026/05",
+    "https://api.chess.com/pub/player/hikaru/games/2026/04",
+    "https://api.chess.com/pub/player/hikaru/games/2026/03",
+    "https://api.chess.com/pub/player/hikaru/games/2026/02",
+    "https://api.chess.com/pub/player/hikaru/games/2026/01",
+    "https://api.chess.com/pub/player/hikaru/games/2025/12",
+    "https://api.chess.com/pub/player/hikaru/games/2025/11",
+    "https://api.chess.com/pub/player/hikaru/games/2025/10",
+    "https://api.chess.com/pub/player/hikaru/games/2025/09",
+    "https://api.chess.com/pub/player/hikaru/games/2025/08"
+  ],
+  "rejection_counts": {
+    "not_blitz": 2388,
+    "not_rated": 13,
+    "nonstandard_rules": 133
+  },
+  "sources": [
+    {
+      "url": "https://api.chess.com/pub/player/hikaru",
+      "fetched_at": "2026-11-06T20:07:02.287592+00:00",
+      "sha256": "59fb1434173bed48246be0590bfdd301b636542c5dc5cce843c4d7154319b761",
+      "bytes": 611,
+      "etag": "W/\"5245349c4e57293f7bc834edf3556a18\"",
+      "last_modified": "Friday, 06-Nov-2026 20:05:35 GMT+0000",
+      "cache_file": "profile.json",
+      "from_cache": false
+    },
+    {
+      "url": "https://api.chess.com/pub/player/hikaru/games/archives",
+      "fetched_at": "2026-11-06T20:07:02.404075+00:00",
+      "sha256": "ff2442761ffe61902e6ef72e1f753df645d90759ea1cc7d5532b58ca191e8f67",
+      "bytes": 8694,
+      "etag": "W/\"670bb038fe92bff87b3ac95e1b0d323c\"",
+      "last_modified": "Tuesday, 03-Nov-2026 15:19:33 GMT+0000",
+      "cache_file": "archives.json",
+      "from_cache": false
+    },
+    {
+      "url": "https://api.chess.com/pub/player/hikaru/games/2026/11",
+      "fetched_at": "2026-11-06T20:07:02.572013+00:00",
+      "sha256": "d084865c1b1eb07a268dfd3febd64a97751eb70723cdaf5e0b6c4c3a16badf89",
+      "bytes": 313806,
+      "etag": "W/\"2a522d5578275a4d591fbbc150833739\"",
+      "last_modified": "Friday, 06-Nov-2026 20:06:35 GMT+0000",
+      "cache_file": "2026-11.json",
+      "from_cache": false
+    },
+    {
+      "url": "https://api.chess.com/pub/player/hikaru/games/2026/10",
+      "fetched_at": "2026-11-06T20:07:02.789758+00:00",
+      "sha256": "2aa3ddc4a2d7654aaf6ffd51081c53967681d3cac0c73ec9276efe23deefcba5",
+      "bytes": 2420832,
+      "etag": "W/\"725b93934dca47ff775fe7387197d7f2\"",
+      "last_modified": "Friday, 06-Nov-2026 19:31:36 GMT+0000",
+      "cache_file": "2026-10.json",
+      "from_cache": false
+    },
+    {
+      "url": "https://api.chess.com/pub/player/hikaru/games/2026/09",
+      "fetched_at": "2026-11-06T20:07:03.064231+00:00",
+      "sha256": "c6acf8a3f5e2ed6fbfc8ccef29870de093a0a8b709a81242f1c8352b96df9ed4",
+      "bytes": 2131092,
+      "etag": "W/\"88a0046ebf374027662649fcdfb16c8b\"",
+      "last_modified": "Friday, 06-Nov-2026 19:12:05 GMT+0000",
+      "cache_file": "2026-09.json",
+      "from_cache": false
+    },
+    {
+      "url": "https://api.chess.com/pub/player/hikaru/games/2026/08",
+      "fetched_at": "2026-11-06T20:07:03.270355+00:00",
+      "sha256": "62f6a7c646a78e7da0a3724a915158ea93949be9fa9bce8cceba5b5864201388",
+      "bytes": 2053115,
+      "etag": "W/\"6cd648075273438153721686f531c03d\"",
+      "last_modified": "Friday, 06-Nov-2026 19:13:22 GMT+0000",
+      "cache_file": "2026-08.json",
+      "from_cache": false
+    },
+    {
+      "url": "https://api.chess.com/pub/player/hikaru/games/2026/07",
+      "fetched_at": "2026-11-06T20:07:03.509182+00:00",
+      "sha256": "23eea25a312b31f51e70bd78d79fd7e5104d5d653d7879126494821ff9c575b3",
+      "bytes": 2497668,
+      "etag": "W/\"72a837e635bba861d70f4b350c5df1b8\"",
+      "last_modified": "Friday, 06-Nov-2026 06:57:52 GMT+0000",
+      "cache_file": "2026-07.json",
+      "from_cache": false
+    },
+    {
+      "url": "https://api.chess.com/pub/player/hikaru/games/2026/06",
+      "fetched_at": "2026-11-06T20:07:03.748909+00:00",
+      "sha256": "99e069b09ab10043c87860fe799cc302f0fc404e596bb5b06950681b639660b9",
+      "bytes": 2930448,
+      "etag": "W/\"59d8737c6870089034f6b78693d096bc\"",
+      "last_modified": "Friday, 06-Nov-2026 19:48:20 GMT+0000",
+      "cache_file": "2026-06.json",
+      "from_cache": false
+    },
+    {
+      "url": "https://api.chess.com/pub/player/hikaru/games/2026/05",
+      "fetched_at": "2026-11-06T20:07:03.987180+00:00",
+      "sha256": "e460f4ec60c43285cc6166fec95fec802ab7d50de5abac36483db320bfef0467",
+      "bytes": 2004044,
+      "etag": "W/\"cdbabc853e9284639188fd6251dca5db\"",
+      "last_modified": "Friday, 06-Nov-2026 14:15:32 GMT+0000",
+      "cache_file": "2026-05.json",
+      "from_cache": false
+    },
+    {
+      "url": "https://api.chess.com/pub/player/hikaru/games/2026/04",
+      "fetched_at": "2026-11-06T20:07:04.322282+00:00",
+      "sha256": "a177da6074482abae380be54a415e038dc27523b9fa65219e640f42eb9ef0619",
+      "bytes": 714674,
+      "etag": "W/\"d6921fdc039ea560ae9b8ee426f52a8c\"",
+      "last_modified": "Friday, 06-Nov-2026 02:42:05 GMT+0000",
+      "cache_file": "2026-04.json",
+      "from_cache": false
+    },
+    {
+      "url": "https://api.chess.com/pub/player/hikaru/games/2026/03",
+      "fetched_at": "2026-11-06T20:07:04.560189+00:00",
+      "sha256": "6931b9fe21b5d03ac0187e68b2716f63249e376bdaf56f563b8b7cf7fb97410d",
+      "bytes": 1249939,
+      "etag": "W/\"4234d85340f1247a5ecb34c4ce5c6aa3\"",
+      "last_modified": "Friday, 06-Nov-2026 02:42:05 GMT+0000",
+      "cache_file": "2026-03.json",
+      "from_cache": false
+    },
+    {
+      "url": "https://api.chess.com/pub/player/hikaru/games/2026/02",
+      "fetched_at": "2026-11-06T20:07:04.804186+00:00",
+      "sha256": "5ac1eb674d6325ab8f0f1c3a7301c25df22ca8df3a7be9a3b0d4288f1773ac20",
+      "bytes": 1638194,
+      "etag": "W/\"1b671c78fbb6586aeeb18acff7eb731e\"",
+      "last_modified": "Friday, 06-Nov-2026 01:39:00 GMT+0000",
+      "cache_file": "2026-02.json",
+      "from_cache": false
+    },
+    {
+      "url": "https://api.chess.com/pub/player/hikaru/games/2026/01",
+      "fetched_at": "2026-11-06T20:07:05.087673+00:00",
+      "sha256": "787efac819016f4215480105c94afb15fd635b4bab19223a76432f75b2603a50",
+      "bytes": 3437104,
+      "etag": "W/\"125fb485dffd22f0f95d8c60200f0725\"",
+      "last_modified": "Friday, 06-Nov-2026 17:27:54 GMT+0000",
+      "cache_file": "2026-01.json",
+      "from_cache": false
+    },
+    {
+      "url": "https://api.chess.com/pub/player/hikaru/games/2025/12",
+      "fetched_at": "2026-11-06T20:07:05.330850+00:00",
+      "sha256": "ed2cd9968d6ae368b6ac07bc8abcedbff624424e75c2a2a6ae253170cef079e3",
+      "bytes": 1387507,
+      "etag": "W/\"375508d0c3b0376a6cce4d9828431747\"",
+      "last_modified": "Friday, 06-Nov-2026 07:14:53 GMT+0000",
+      "cache_file": "2025-12.json",
+      "from_cache": false
+    },
+    {
+      "url": "https://api.chess.com/pub/player/hikaru/games/2025/11",
+      "fetched_at": "2026-11-06T20:07:05.574145+00:00",
+      "sha256": "cd2f836e49727d36f17dbb79f6c6d33cb1b727e9c846ea02bda2678c970b5d40",
+      "bytes": 2657281,
+      "etag": "W/\"a5d43fc984828e15897447948ee44596\"",
+      "last_modified": "Friday, 06-Nov-2026 13:37:09 GMT+0000",
+      "cache_file": "2025-11.json",
+      "from_cache": false
+    },
+    {
+      "url": "https://api.chess.com/pub/player/hikaru/games/2025/10",
+      "fetched_at": "2026-11-06T20:07:05.810171+00:00",
+      "sha256": "cbbcb8c08642a5f8e127843287ed6fbce169dd14849075d20a29ca0a12a02988",
+      "bytes": 1385373,
+      "etag": "W/\"1dca53bbc782cc2afce49d2d1bd4731e\"",
+      "last_modified": "Friday, 06-Nov-2026 19:23:56 GMT+0000",
+      "cache_file": "2025-10.json",
+      "from_cache": false
+    },
+    {
+      "url": "https://api.chess.com/pub/player/hikaru/games/2025/09",
+      "fetched_at": "2026-11-06T20:07:06.076856+00:00",
+      "sha256": "dc1f16ab61c83b97e3d848cd032a8e819c5e0c6b6cc60bc5bf9e3585e70adf94",
+      "bytes": 2170942,
+      "etag": "W/\"2c4a76b670efca5e51abef28f0cd7b57\"",
+      "last_modified": "Friday, 06-Nov-2026 18:06:01 GMT+0000",
+      "cache_file": "2025-09.json",
+      "from_cache": false
+    },
+    {
+      "url": "https://api.chess.com/pub/player/hikaru/games/2025/08",
+      "fetched_at": "2026-11-06T20:07:06.365633+00:00",
+      "sha256": "aafb2eb3b788740988022725bb1ab35d92e0c600fdc339b99b9f5e1f9aa65006",
+      "bytes": 2870331,
+      "etag": "W/\"645d2f9a755a60b8e89dd9abc8eb0d4d\"",
+      "last_modified": "Friday, 06-Nov-2026 16:39:47 GMT+0000",
+      "cache_file": "2025-08.json",
+      "from_cache": false
+    }
+  ],
+  "updated_at": "2026-11-06T20:07:06.463236+00:00",
+  "error": null,
+  "games_sha256": "f8a7d001069b8fb797ed6a420ffeef55d48d2ab18fcd1c48f4406ed2469844f2",
+  "games_bytes": 19147295,
+  "outcome_counts": {
+    "0-1": 2273,
+    "1-0": 2383,
+    "1/2-1/2": 344
+  },
+  "target_color_counts": {
+    "b": 2488,
+    "w": 2512
+  },
+  "date_span": {
+    "first_end_time": 1754600886,
+    "last_end_time": 1793990890,
+    "first_utc": "2025-08-07T21:08:06+00:00",
+    "last_utc": "2026-11-06T18:48:10+00:00"
+  }
+}
